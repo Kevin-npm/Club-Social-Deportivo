@@ -122,6 +122,9 @@ Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'getM
 
 Route::post('/ludoteca/ingreso', [LudotecaController::class, 'registrarIngreso']);
 Route::post('/ludoteca/salida', [LudotecaController::class, 'registrarSalida']);
+Route::post('/ludoteca/ajustar-tiempo', [LudotecaController::class, 'ajustarTiempo']);
+Route::post('/ludoteca/reset-tiempo', [LudotecaController::class, 'resetTiempo']);
+Route::get('/ludoteca/mi-status', [LudotecaController::class, 'miStatus']);
 
 Route::get('/checkins/buscar', [CheckinController::class, 'buscarSocio']);
 Route::get('/checkins',  [CheckinController::class, 'index']);

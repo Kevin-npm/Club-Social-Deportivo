@@ -385,7 +385,7 @@ const Dependientes = () => {
     (titularActual.modalidad || "").toLowerCase() !== "familiar";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       {titularFiltro && titularActual && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3">
           <div className="flex items-center gap-3 text-violet-300">
@@ -489,9 +489,9 @@ const Dependientes = () => {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-gray-800 bg-[#14171c]">
-        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-800 px-6 py-5">
           <div>
-            <h2 className="text-3xl font-bold text-white">
+            <h2 className="text-2xl md:text-3xl font-bold text-white">
               {titularActual
                 ? `Dependientes de ${titularActual.nombre}`
                 : "Directorio de dependientes"}

@@ -137,10 +137,10 @@ const Torneos = () => {
   };
 
   return (
-    <div className="p-6 bg-[#0f1115] min-h-screen text-gray-200">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-4xl font-extrabold text-white flex items-center gap-3">
-          <Trophy className="text-yellow-400 w-10 h-10" />
+    <div className="p-4 md:p-6 bg-[#0f1115] min-h-screen text-gray-200">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+        <h1 className="text-2xl md:text-4xl font-extrabold text-white flex items-center gap-3">
+          <Trophy className="text-yellow-400 w-8 h-8 md:w-10 md:h-10" />
           Gestión de Torneos
         </h1>
 
@@ -211,7 +211,7 @@ const Torneos = () => {
 
       {isAdmin && modalFormulario && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-[#1c1f26] border border-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden">
+          <div className="bg-[#1c1f26] border border-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
             <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-[#1a1d23]">
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                 <LayoutGrid className="text-yellow-400" />
@@ -242,7 +242,7 @@ const Torneos = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
                   <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                     Categoría (Según Catálogo)
@@ -287,7 +287,7 @@ const Torneos = () => {
               </div>
 
               {formData.sede_principal && (
-                <div className="grid grid-cols-2 gap-4 animate-in fade-in">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in">
                   <div className="bg-gray-900/50 p-4 rounded-xl border border-gray-800">
                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                       Deporte
@@ -340,7 +340,7 @@ const Torneos = () => {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input
                   type="date"
                   required

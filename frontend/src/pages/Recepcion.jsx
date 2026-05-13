@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, CalendarDays, Baby, CreditCard, AlertTriangle, Clock, X, Edit, Trash2, CheckCircle2, UserCheck, Loader2, CheckCircle } from 'lucide-react';
+import { useLudoteca } from '../context/LudotecaContext';
 
 const Recepcion = () => {
     // Pestaña por defecto
@@ -36,23 +37,20 @@ const Recepcion = () => {
     // 2. ESTADOS: LUDOTECA LIVE Y CONTROLES ADMIN
     // ==========================================
     const [modalLudoteca, setModalLudoteca] = useState(false);
-    const [horaActual, setHoraActual] = useState(Date.now());
+   const [horaActual, setHoraActual] = useState(() => Date.now());
     
     // Nuevo estado para el Modal de Tiempo
     const [modalTiempo, setModalTiempo] = useState({ visible: false, id_socio: null });
     const [minutosManual, setMinutosManual] = useState('');
     
-    const obtenerNinosGuardados = () => {
-        const guardados = localStorage.getItem('ludoteca_ninos');
-        return guardados ? JSON.parse(guardados) : [];
-    };
-    const [ninosLudoteca, setNinosLudoteca] = useState(obtenerNinosGuardados);
+    // Usar el contexto de ludoteca
+    const { ninosLudoteca, agregarNino, removerNino, ajustarTiempo, resetTiempo } = useLudoteca();
 
-    useEffect(() => { localStorage.setItem('ludoteca_ninos', JSON.stringify(ninosLudoteca)); }, [ninosLudoteca]);
     useEffect(() => { const intervalo = setInterval(() => setHoraActual(Date.now()), 1000); return () => clearInterval(intervalo); }, []);
 
     const calcularTiempoYColor = (entradaIso) => {
-        const diff = Math.max(0, horaActual - new Date(entradaIso).getTime());
+        const iso = (entradaIso || "").replace(" ", "T");
+        const diff = Math.max(0, horaActual - new Date(iso).getTime());
         const horas = Math.floor(diff / (1000 * 60 * 60));
         const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const segundos = Math.floor((diff % (1000 * 60)) / 1000);
@@ -78,41 +76,40 @@ const Recepcion = () => {
                 const data = await res.json();
 
                 if (res.status === 200 && data.status === 'success') {
-                    setNinosLudoteca(ninosLudoteca.filter(nino => nino.id_socio !== id_socio));
+                    // Usar la función del contexto para sincronizar
+                    removerNino(id_socio);
                     alert('✅ ' + data.message);
                 } else {
                     alert('❌ Error: ' + (data.message || 'No se pudo registrar la salida.'));
                 }
-            } catch (error) {
+            } catch {
                 alert('❌ Error crítico de conexión con el servidor.');
             }
         } 
     };
 
     // Nueva función centralizada para aplicar el tiempo (manual o botones rápidos)
-    const aplicarTiempo = (minutosExtra) => {
+    const aplicarTiempo = async (minutosExtra) => {
         const id_socio = modalTiempo.id_socio;
         if (!minutosExtra || isNaN(minutosExtra) || minutosExtra <= 0) return;
 
         if(window.confirm(`¿Añadir ${minutosExtra} minutos extra al tiempo del socio #${id_socio}?`)) {
-            setNinosLudoteca(ninosLudoteca.map(nino => {
-                if (nino.id_socio === id_socio) {
-                    const fechaOriginal = new Date(nino.tiempo_entrada);
-                    const nuevaFecha = new Date(fechaOriginal.getTime() + (minutosExtra * 60000));
-                    return { ...nino, tiempo_entrada: nuevaFecha.toISOString() };
-                }
-                return nino;
-            }));
+            const ok = await ajustarTiempo(id_socio, minutosExtra);
+            if (!ok) {
+                alert('❌ Error al ajustar el tiempo en el servidor.');
+                return;
+            }
             setModalTiempo({ visible: false, id_socio: null });
             setMinutosManual('');
         }
     };
 
-    const restablecerTiempo = (id_socio) => {
+    const restablecerTiempo = async (id_socio) => {
         if(window.confirm(`¿Estás seguro de reiniciar el cronómetro a 00:00:00 para el socio #${id_socio}?`)) {
-            setNinosLudoteca(ninosLudoteca.map(nino => 
-                nino.id_socio === id_socio ? { ...nino, tiempo_entrada: new Date().toISOString() } : nino
-            ));
+            const ok = await resetTiempo(id_socio);
+            if (!ok) {
+                alert('❌ Error al reiniciar el tiempo en el servidor.');
+            }
         }
     };
 
@@ -147,7 +144,7 @@ const Recepcion = () => {
             const res = await fetch(`http://localhost:8000/api/socios/${idVerificar}/verificar-acceso`);
             const data = await res.json();
             setResultadoMembresia(data);
-        } catch (error) {
+        } catch {
             setResultadoMembresia({ status: 'error', message: 'Error al conectar con el servidor.' });
         }
         setVerificando(false);
@@ -159,19 +156,19 @@ const Recepcion = () => {
     return (
         <div className="space-y-6 text-gray-200">
             {/* ENCABEZADO Y BUSCADOR */}
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
                 <div>
                     <h1 className="text-4xl font-extrabold text-white flex items-center gap-3">🛎️ Control de Recepción</h1>
                     <p className="text-gray-400 mt-2">Gestión de accesos, ludoteca y reservaciones</p>
                 </div>
-                <div className="flex items-center bg-[#1a1d23] border border-gray-800 rounded-xl px-4 py-3 w-96 focus-within:border-yellow-400 transition-colors shadow-lg">
+                <div className="flex items-center bg-[#1a1d23] border border-gray-800 rounded-xl px-4 py-3 w-full sm:w-96 focus-within:border-yellow-400 transition-colors shadow-lg">
                     <Search className="text-gray-500 mr-3" size={20} />
                     <input type="text" placeholder="Escanear o teclear ID..." className="bg-transparent border-none outline-none text-white w-full"/>
                 </div>
             </div>
 
             {/* BOTONES DE NAVEGACIÓN */}
-            <div className="flex space-x-2 bg-[#14171c] p-1 rounded-xl border border-gray-800 w-max shadow-lg">
+            <div className="flex flex-wrap gap-2 bg-[#14171c] p-1 rounded-xl border border-gray-800 w-full sm:w-max shadow-lg">
                 <button onClick={() => setTabActiva('reservas')} className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${tabActiva === 'reservas' ? 'bg-yellow-400 text-black' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}><CalendarDays size={18} /> Reservaciones</button>
                 <button onClick={() => setTabActiva('ludoteca')} className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${tabActiva === 'ludoteca' ? 'bg-yellow-400 text-black' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}><Baby size={18} /> Ludoteca Live</button>
                 <button onClick={() => setTabActiva('membresias')} className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition-all ${tabActiva === 'membresias' ? 'bg-yellow-400 text-black' : 'text-gray-400 hover:text-white hover:bg-gray-800'}`}><CreditCard size={18} /> Estatus Socios</button>
@@ -183,7 +180,7 @@ const Recepcion = () => {
                 {/* --- PESTAÑA 1: RESERVAS --- */}
                 {tabActiva === 'reservas' && (
                     <div className="animate-in fade-in duration-300">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
                             <h2 className="text-2xl font-bold text-white">Reservaciones de Hoy</h2>
                             <button className="bg-[#1a1d23] border border-gray-800 hover:border-yellow-400 text-white px-4 py-2 rounded-xl transition-colors flex items-center gap-2"><CalendarDays size={18} /> Filtrar Fechas</button>
                         </div>
@@ -216,7 +213,7 @@ const Recepcion = () => {
                                                     {reserva.estatus}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 flex justify-center gap-4">
+                                            <td className="px-6 py-4 flex justify-center gap-2 md:gap-4">
                                                 {reserva.estatus === 'Pendiente' && (
                                                     <button onClick={() => confirmarReserva(reserva.id)} className="text-green-400 hover:text-green-300 transition-colors" title="Confirmar Reserva"><CheckCircle2 size={18} /></button>
                                                 )}
@@ -352,7 +349,7 @@ const Recepcion = () => {
                         </div>
                         
                         <form className="space-y-4" onSubmit={guardarEdicion}>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">ID Reserva</label>
                                     <input type="text" disabled value={reservaEditando.id} className="w-full bg-[#0f1115] border border-gray-700 rounded-lg p-3 text-gray-500 cursor-not-allowed" />
@@ -383,7 +380,7 @@ const Recepcion = () => {
                                     ))}
                                 </select>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Fecha</label>
                                     <input 
@@ -454,10 +451,11 @@ const Recepcion = () => {
                                             tutor: `${nombreTutor || 'Tutor Nuevo'} (${datos.id_tutor})`,
                                             tiempo_entrada: new Date().toISOString()
                                         };
-                                        setNinosLudoteca([...ninosLudoteca, nuevoNino]);
+                                        // Usar la función del contexto para sincronizar
+                                        agregarNino(nuevoNino);
                                         setModalLudoteca(false); setNombreNino(''); setNombreTutor('');
                                     }
-                                } catch (error) { alert("❌ Error crítico: ¿Está prendido el servidor de Laravel?"); }
+                                } catch { alert("❌ Error crítico: ¿Está prendido el servidor de Laravel?"); }
                             }} className="space-y-5">
                             
                             <div>
