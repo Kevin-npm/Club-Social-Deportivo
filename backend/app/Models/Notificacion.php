@@ -10,10 +10,13 @@ class Notificacion extends Model
     use HasFactory;
 
     protected $table = 'tbl_notificaciones';
+
     protected $primaryKey = 'id_notificacion';
 
     public $incrementing = true;
+
     protected $keyType = 'int';
+
     public $timestamps = true;
 
     protected $fillable = [
@@ -30,15 +33,33 @@ class Notificacion extends Model
         'updated_at' => 'datetime',
     ];
 
+    /*
+    |--------------------------------------------------------------------------
+    | RELACIONES
+    |--------------------------------------------------------------------------
+    */
+
     public function socio()
     {
         return $this->belongsTo(Socio::class, 'id_socio', 'id_socio');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | SCOPES
+    |--------------------------------------------------------------------------
+    */
+
     public function scopeNoLeidas($query)
     {
         return $query->where('leido_boolean', false);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | MÉTODOS AUXILIARES
+    |--------------------------------------------------------------------------
+    */
 
     public function marcarComoLeida()
     {
