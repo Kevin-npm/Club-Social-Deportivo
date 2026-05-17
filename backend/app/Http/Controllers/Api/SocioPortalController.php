@@ -235,4 +235,31 @@ class SocioPortalController extends Controller
             'data' => $reserva->fresh()->load(['espacio'])
         ]);
     }
+
+        public function detallePago(Request $request, $id)
+    {
+        $resultado = $this->obtenerSocioAutenticado($request);
+
+        if (isset($resultado['error'])) {
+            return $resultado['error'];
+        }
+
+        $socio = $resultado['socio'];
+
+        $pago = Pago::with(['metodo'])
+            ->where('id_pago', $id)
+            ->where('id_socio', $socio->id_socio)
+            ->first();
+
+        if (!$pago) {
+            return response()->json([
+                'message' => 'Pago no encontrado o no pertenece al socio autenticado.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $pago
+        ]);
+    }
 }
