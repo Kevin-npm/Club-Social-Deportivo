@@ -28,7 +28,7 @@
                     <!-- Header -->
                     <tr>
                         <td style="background-color: #1a1d23; padding: 32px 32px; text-align: center;" class="header-td">
-                            <h1 style="color: #facc15; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;" class="h1">ClubManager360</h1>
+                            <h1 style="color: #facc15; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px;" class="h1">CM360</h1>
                             <p style="color: #9ca3af; margin: 6px 0 0; font-size: 13px;">Club Social &amp; Deportivo</p>
                         </td>
                     </tr>
@@ -67,7 +67,7 @@
                     <tr>
                         <td style="background-color: #f9fafb; padding: 20px 32px; text-align: center; border-top: 1px solid #e5e7eb;" class="footer-td">
                             <p style="color: #9ca3af; font-size: 11px; line-height: 1.5; margin: 0;">
-                                &copy; {{ date('Y') }} ClubManager360. Todos los derechos reservados.
+                                &copy; {{ date('Y') }} CM360. Todos los derechos reservados.
                             </p>
                             <p style="color: #9ca3af; font-size: 11px; margin: 4px 0 0;">
                                 Este es un mensaje automático, por favor no respondas a este correo.

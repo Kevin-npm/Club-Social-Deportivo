@@ -520,7 +520,7 @@ const Socios = () => {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-gray-800 bg-[#14171c]">
-        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-800 px-6 py-5">
           <div>
             <h2 className="text-3xl font-bold text-white">Directorio de socios</h2>
             {selectedSocios.length > 0 && (

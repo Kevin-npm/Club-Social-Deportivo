@@ -149,7 +149,7 @@ const Instructores = () => {
   }, []);
 
   return (
-    <div className="p-6 bg-[#0B0E11] min-h-screen text-white">
+    <div className="p-4 md:p-6 bg-[#0B0E11] min-h-screen text-white">
       {/* Indicadores Visuales */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-[#161B22] p-4 rounded-xl border border-gray-800">
@@ -174,7 +174,7 @@ const Instructores = () => {
 
       {/* Barra de Herramientas: Búsqueda y Filtros */}
       <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-        <div className="flex gap-3 flex-1 min-w-75">
+        <div               className="flex flex-col sm:flex-row gap-3 flex-1 min-w-[280px]">
           <input
             type="text"
             placeholder="Buscar por nombre..."
@@ -217,8 +217,8 @@ const Instructores = () => {
       </div>
 
       {/* Tabla de Resultados */}
-      <div className="bg-[#161B22] rounded-xl border border-gray-800 overflow-hidden shadow-xl">
-        <table className="w-full text-left">
+      <div className="bg-[#161B22] rounded-xl border border-gray-800 shadow-xl overflow-x-auto">
+        <table className="w-full text-left min-w-[600px]">
           <thead className="bg-[#0B0E11] text-gray-500 text-xs uppercase border-b border-gray-800">
             <tr>
               <th
