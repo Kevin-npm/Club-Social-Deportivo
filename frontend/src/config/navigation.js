@@ -15,7 +15,7 @@ import {
 // Fuente central de navegación
 export const MenuItems = [
   {
-    title: "Dashboard",
+    title: "Dashboard Ludoteca",
     icon: LayoutDashboard,
     path: "/dashboard",
     roles: ["admin", "instructor"],

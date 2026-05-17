@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Search, CalendarDays, Baby, CreditCard, AlertTriangle, Clock, X, Edit, Trash2, CheckCircle2, UserCheck, Loader2, CheckCircle } from 'lucide-react';
 import { useLudoteca } from '../context/LudotecaContext';
 
@@ -37,31 +37,32 @@ const Recepcion = () => {
     // 2. ESTADOS: LUDOTECA LIVE Y CONTROLES ADMIN
     // ==========================================
     const [modalLudoteca, setModalLudoteca] = useState(false);
-   const [horaActual, setHoraActual] = useState(() => Date.now());
     
     // Nuevo estado para el Modal de Tiempo
     const [modalTiempo, setModalTiempo] = useState({ visible: false, id_socio: null });
     const [minutosManual, setMinutosManual] = useState('');
     
+    // Estado para segundos transcurridos por niño (igual que LudotecaLiveWidget)
     // Usar el contexto de ludoteca
     const { ninosLudoteca, agregarNino, removerNino, ajustarTiempo, resetTiempo } = useLudoteca();
 
-    useEffect(() => { const intervalo = setInterval(() => setHoraActual(Date.now()), 1000); return () => clearInterval(intervalo); }, []);
-
-    const calcularTiempoYColor = (entradaIso) => {
-        const iso = (entradaIso || "").replace(" ", "T");
-        const diff = Math.max(0, horaActual - new Date(iso).getTime());
-        const horas = Math.floor(diff / (1000 * 60 * 60));
-        const minutos = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const segundos = Math.floor((diff % (1000 * 60)) / 1000);
-
-        const formato = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-        const minutosTotales = (horas * 60) + minutos;
-        
-        let colorClass = "text-green-400 bg-green-500/10 border-green-500/20"; let lineaLateral = "bg-green-500";
-        if (minutosTotales >= 120) { colorClass = "text-red-400 bg-red-500/10 border-red-500/20 animate-pulse"; lineaLateral = "bg-red-500 animate-pulse"; } 
-        else if (minutosTotales >= 105) { colorClass = "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"; lineaLateral = "bg-yellow-400"; }
-        return { formato, colorClass, lineaLateral };
+    const obtenerEstadoTiempo = (segundos) => {
+        const minutosTotales = segundos / 60;
+        let label, clase, linea;
+        if (minutosTotales >= 120) { 
+            label = "TIEMPO EXCEDIDO";
+            clase = "text-red-400 bg-red-500/10 border-red-500/20 animate-pulse"; 
+            linea = "bg-red-500 animate-pulse"; 
+        } else if (minutosTotales >= 105) { 
+            label = "PRÓXIMO A VENCER";
+            clase = "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"; 
+            linea = "bg-yellow-400"; 
+        } else {
+            label = "CON TIEMPO";
+            clase = "text-green-400 bg-green-500/10 border-green-500/20"; 
+            linea = "bg-green-500"; 
+        }
+        return { label, clase, linea };
     };
 
     // FUNCIONES ADMINISTRATIVAS DE LUDOTECA
@@ -240,12 +241,11 @@ const Recepcion = () => {
                                 <p className="text-gray-500 col-span-3 text-center py-10">No hay niños registrados en este momento.</p>
                             ) : (
                                 ninosLudoteca.map((nino) => {
-                                    const { formato, colorClass, lineaLateral } = calcularTiempoYColor(nino.tiempo_entrada);
+                                    const { label, clase, linea } = obtenerEstadoTiempo(nino.segundos_transcurridos || 0);
                                     return (
                                         <div key={nino.id_socio} className="bg-[#1a1d23] border border-gray-800 rounded-xl p-5 relative overflow-hidden group hover:border-gray-600 transition-colors flex flex-col justify-between">
-                                            <div className={`absolute top-0 left-0 w-1 h-full ${lineaLateral}`}></div>
+                                            <div className={`absolute top-0 left-0 w-1 h-full ${linea}`}></div>
                                             
-                                            {/* Cabecera de la tarjeta */}
                                             <div className="flex justify-between items-start mb-2">
                                                 <div>
                                                     <h3 className="font-bold text-lg text-white">#{nino.id_socio} - {nino.nombre_nino}</h3>
@@ -253,22 +253,18 @@ const Recepcion = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Reloj y Estado */}
-                                            <div className="flex justify-between items-center my-3">
-                                                <div className={`flex items-center gap-2 font-mono font-bold text-2xl w-max px-3 py-1 rounded-lg border ${colorClass}`}>
-                                                    <Clock size={20} /> {formato}
-                                                </div>
-                                                <div className="text-right flex flex-col items-end">
-                                                    <p className="text-[10px] text-gray-500 uppercase font-bold">Límite: 2 horas</p>
-                                                    {colorClass.includes("red") && <span className="text-[10px] text-red-400 font-bold bg-red-500/10 px-2 py-1 rounded mt-1">¡TIEMPO EXCEDIDO!</span>}
-                                                    {colorClass.includes("yellow") && <span className="text-[10px] text-yellow-400 font-bold bg-yellow-500/10 px-2 py-1 rounded mt-1">FALTAN &lt; 15 MIN</span>}
+                                            <div className="flex items-center justify-between my-3">
+                                                <span className={`text-sm font-bold uppercase tracking-wider px-4 py-2 rounded-lg border ${clase}`}>
+                                                    {label}
+                                                </span>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-500">Límite: 2 horas</p>
+                                                    <p className="text-[10px] text-gray-600">{Math.floor((nino.segundos_transcurridos || 0) / 3600)}h {Math.floor(((nino.segundos_transcurridos || 0) % 3600) / 60)}m transcurridos</p>
                                                 </div>
                                             </div>
 
-                                            {/* PANEL DE CONTROL ADMINISTRADOR */}
                                             <div className="mt-2 pt-4 border-t border-gray-800 flex justify-between items-center opacity-90 group-hover:opacity-100 transition-opacity">
                                                 <div className="flex gap-2">
-                                                    {/* Nuevo botón que abre el modal de Tiempo */}
                                                     <button onClick={() => setModalTiempo({ visible: true, id_socio: nino.id_socio })} className="text-[11px] font-bold bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 px-2 py-1.5 rounded border border-blue-500/20 transition-all" title="Modificar tiempo">⏱️ Añadir</button>
                                                     <button onClick={() => restablecerTiempo(nino.id_socio)} className="text-[11px] font-bold bg-gray-700/50 text-gray-300 hover:bg-gray-700 px-2 py-1.5 rounded border border-gray-600 transition-all" title="Reiniciar a 0">🔄 Reset</button>
                                                 </div>
