@@ -144,4 +144,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/socio/notificaciones', [SocioPortalController::class, 'notificaciones']);
     Route::patch('/socio/notificaciones/{id}/leer', [SocioPortalController::class, 'marcarNotificacionComoLeida']);
     Route::patch('/socio/notificaciones/leer-todas', [SocioPortalController::class, 'marcarTodasNotificacionesComoLeidas']);
+    Route::get('/socio/reservas/{id}', [SocioPortalController::class, 'detalleReserva']);
+    Route::patch('/socio/reservas/{id}/cancelar', [SocioPortalController::class, 'cancelarReserva']);
 });

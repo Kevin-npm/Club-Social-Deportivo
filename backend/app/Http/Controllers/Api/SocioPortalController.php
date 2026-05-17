@@ -171,4 +171,68 @@ class SocioPortalController extends Controller
             'actualizadas' => $actualizadas,
         ]);
     }
+
+        public function detalleReserva(Request $request, $id)
+    {
+        $resultado = $this->obtenerSocioAutenticado($request);
+
+        if (isset($resultado['error'])) {
+            return $resultado['error'];
+        }
+
+        $socio = $resultado['socio'];
+
+        $reserva = Reservas::with(['espacio'])
+            ->where('id_reserva', $id)
+            ->where('id_socio', $socio->id_socio)
+            ->first();
+
+        if (!$reserva) {
+            return response()->json([
+                'message' => 'Reserva no encontrada o no pertenece al socio autenticado.'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $reserva
+        ]);
+    }
+
+    public function cancelarReserva(Request $request, $id)
+    {
+        $resultado = $this->obtenerSocioAutenticado($request);
+
+        if (isset($resultado['error'])) {
+            return $resultado['error'];
+        }
+
+        $socio = $resultado['socio'];
+
+        $reserva = Reservas::where('id_reserva', $id)
+            ->where('id_socio', $socio->id_socio)
+            ->first();
+
+        if (!$reserva) {
+            return response()->json([
+                'message' => 'Reserva no encontrada o no pertenece al socio autenticado.'
+            ], 404);
+        }
+
+        if ($reserva->estatus !== 'Activa') {
+            return response()->json([
+                'message' => 'Solo se pueden cancelar reservas con estatus Activa.'
+            ], 422);
+        }
+
+        $reserva->update([
+            'estatus' => 'Cancelada',
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Reserva cancelada correctamente.',
+            'data' => $reserva->fresh()->load(['espacio'])
+        ]);
+    }
 }
