@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Socio;
 use App\Models\Reservas;
+use App\Models\Instalaciones;
 use App\Models\Pago;
 use App\Models\Notificacion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class SocioPortalController extends Controller
 {
@@ -261,5 +264,123 @@ class SocioPortalController extends Controller
             'status' => 'success',
             'data' => $pago
         ]);
+    }
+
+    /**
+     * GET /api/socio/reservas/disponibilidad?id_espacio=X&fecha=YYYY-MM-DD
+     * Devuelve los horarios ya ocupados para un espacio en una fecha dada.
+     */
+    public function disponibilidad(Request $request)
+    {
+        $resultado = $this->obtenerSocioAutenticado($request);
+        if (isset($resultado['error'])) return $resultado['error'];
+
+        $request->validate([
+            'id_espacio' => 'required|integer|exists:tbl_instalaciones,id_espacio',
+            'fecha'      => 'required|date_format:Y-m-d',
+        ]);
+
+        $fecha   = $request->query('fecha');
+        $espacio = (int) $request->query('id_espacio');
+
+        // Ventana ampliada: acepta cualquier fecha desde ayer hasta pasado mañana
+        // Esto garantiza que usuarios en zonas UTC-X puedan reservar correctamente
+        $fechaCarbon = Carbon::parse($fecha);
+        $limiteMin   = Carbon::today()->subDay();         // ayer UTC
+        $limiteMax   = Carbon::today()->addDays(2);       // pasado mañana UTC
+
+        if ($fechaCarbon->lt($limiteMin) || $fechaCarbon->gt($limiteMax)) {
+            return response()->json([
+                'message' => 'Solo se pueden consultar disponibilidades para hoy o mañana.'
+            ], 422);
+        }
+
+        $reservas = Reservas::where('id_espacio', $espacio)
+            ->where('fecha', $fecha)
+            ->whereIn('estatus', ['Activa', 'Completada'])
+            ->select('hora_inicio', 'hora_fin')
+            ->get();
+
+        return response()->json([
+            'status'   => 'success',
+            'fecha'    => $fecha,
+            'espacio'  => $espacio,
+            'ocupados' => $reservas,
+        ]);
+    }
+
+    /**
+     * POST /api/socio/reservas
+     * Crea una nueva reserva desde el portal del socio.
+     */
+    public function crearReserva(Request $request)
+    {
+        $resultado = $this->obtenerSocioAutenticado($request);
+        if (isset($resultado['error'])) return $resultado['error'];
+
+        $socio = $resultado['socio'];
+
+        $validated = $request->validate([
+            'id_espacio'  => 'required|integer|exists:tbl_instalaciones,id_espacio',
+            'fecha'       => 'required|date_format:Y-m-d',
+            'hora_inicio' => 'required|date_format:H:i',
+            'hora_fin'    => 'required|date_format:H:i',
+        ]);
+
+        // Validar manualmente que hora_fin > hora_inicio (evita bug de strtotime con H:i)
+        if ($validated['hora_fin'] <= $validated['hora_inicio']) {
+            return response()->json([
+                'message' => 'La hora de fin debe ser posterior a la hora de inicio.'
+            ], 422);
+        }
+
+        // Ventana permisiva: desde ayer hasta pasado mañana (cubre cualquier UTC offset)
+        $fechaCarbon = Carbon::parse($validated['fecha'])->startOfDay();
+        $limiteMin   = Carbon::now()->subDays(1)->startOfDay();
+        $limiteMax   = Carbon::now()->addDays(2)->startOfDay();
+
+        if ($fechaCarbon->lt($limiteMin) || $fechaCarbon->gt($limiteMax)) {
+            return response()->json([
+                'message' => 'Solo puedes reservar para hoy o mañana.'
+            ], 422);
+        }
+
+        // Verificar que no haya conflicto de horario
+        $conflicto = Reservas::where('id_espacio', $validated['id_espacio'])
+            ->where('fecha', $validated['fecha'])
+            ->whereIn('estatus', ['Activa', 'Completada'])
+            ->where(function ($q) use ($validated) {
+                $q->where('hora_inicio', '<', $validated['hora_fin'])
+                  ->where('hora_fin',    '>',  $validated['hora_inicio']);
+            })
+            ->exists();
+
+        if ($conflicto) {
+            return response()->json([
+                'message' => 'El horario seleccionado ya está ocupado. Elige otro.'
+            ], 409);
+        }
+
+        // Generar folio único
+        $folio = 'RES-' . strtoupper(Str::random(8));
+
+        $reserva = Reservas::create([
+            'id_socio'       => $socio->id_socio,
+            'id_espacio'     => $validated['id_espacio'],
+            'fecha'          => $validated['fecha'],
+            'hora_inicio'    => $validated['hora_inicio'],
+            'hora_fin'       => $validated['hora_fin'],
+            'folio_reserva'  => $folio,
+            'estatus'        => 'Activa',
+            'estatus_noshow' => false,
+        ]);
+
+        $reserva->load(['espacio']);
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => 'Reserva creada correctamente.',
+            'data'    => $reserva,
+        ], 201);
     }
 }
