@@ -38,7 +38,7 @@ export default function SocioHome() {
         }
 
         setSocio(data.socio);
-      } catch (error) {
+      } catch {
         setError("No se pudo conectar con el servidor.");
       } finally {
         setLoading(false);
@@ -49,12 +49,16 @@ export default function SocioHome() {
   }, [token]);
 
   if (loading) {
-    return <p className="text-slate-600">Cargando información del socio...</p>;
+    return (
+      <p className="text-sm sm:text-base text-slate-600">
+        Cargando información del socio...
+      </p>
+    );
   }
 
   if (error) {
     return (
-      <div className="bg-red-100 text-red-700 rounded-lg px-4 py-3">
+      <div className="bg-red-100 text-red-700 rounded-lg px-4 py-3 text-sm">
         {error}
       </div>
     );
@@ -63,31 +67,47 @@ export default function SocioHome() {
   return (
     <section>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-900">Mi información</h2>
-        <p className="text-slate-500">
+        <h2 className="text-xl sm:text-2xl font-bold text-slate-900">
+          Mi información
+        </h2>
+
+        <p className="text-sm sm:text-base text-slate-500">
           Consulta tus datos registrados dentro del club.
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl shadow p-6">
+      <div className="bg-white rounded-2xl shadow p-5 sm:p-6">
         <div className="mb-6">
-          <h3 className="text-xl font-semibold text-slate-900">
-            {socio.nombre} {socio.apellidos}
+          <h3 className="text-lg sm:text-xl font-semibold text-slate-900 break-words">
+            {socio?.nombre} {socio?.apellidos}
           </h3>
-          <p className="text-slate-500">
-            Socio #{socio.id_socio}
+
+          <p className="text-sm sm:text-base text-slate-500">
+            Socio #{socio?.id_socio}
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-5">
-          <InfoItem label="Tipo de membresía" value={socio.tipo_membresia} />
-          <InfoItem label="Modalidad" value={socio.modalidad} />
-          <InfoItem label="Estatus financiero" value={socio.estatus_financiero} />
-          <InfoItem label="Género" value={socio.genero} />
-          <InfoItem label="Fecha de nacimiento" value={formatDate(socio.fecha_nacimiento)} />
-          <InfoItem label="Inicio de vigencia" value={formatDate(socio.fecha_inicio_vigencia)} />
-          <InfoItem label="Fin de vigencia" value={formatDate(socio.fecha_fin_vigencia)} />
-          <InfoItem label="Faltas registradas" value={socio.faltas ?? 0} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          <InfoItem label="Tipo de membresía" value={socio?.tipo_membresia} />
+          <InfoItem label="Modalidad" value={socio?.modalidad} />
+          <InfoItem
+            label="Estatus financiero"
+            value={socio?.estatus_financiero}
+          />
+          <InfoItem label="Género" value={socio?.genero} />
+          <InfoItem
+            label="Fecha de nacimiento"
+            value={formatDate(socio?.fecha_nacimiento)}
+          />
+          <InfoItem
+            label="Inicio de vigencia"
+            value={formatDate(socio?.fecha_inicio_vigencia)}
+          />
+          <InfoItem
+            label="Fin de vigencia"
+            value={formatDate(socio?.fecha_fin_vigencia)}
+          />
+          <InfoItem label="Faltas registradas" value={socio?.faltas ?? 0} />
         </div>
       </div>
     </section>
@@ -96,9 +116,12 @@ export default function SocioHome() {
 
 function InfoItem({ label, value }) {
   return (
-    <div className="border border-slate-200 rounded-xl p-4">
+    <div className="border border-slate-200 rounded-xl p-4 min-w-0">
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="font-semibold text-slate-900">{value || "No registrado"}</p>
+
+      <p className="font-semibold text-slate-900 break-words">
+        {value || "No registrado"}
+      </p>
     </div>
   );
 }
