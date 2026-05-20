@@ -8,6 +8,7 @@ class Reservas extends Model
 {
     protected $table      = 'tbl_reservas';
     protected $primaryKey = 'id_reserva';
+    public $timestamps = false;
 
     protected $fillable = [
         'id_socio',

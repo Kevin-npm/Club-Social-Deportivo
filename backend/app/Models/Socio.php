@@ -45,4 +45,9 @@ class Socio extends Model
     {
         return $this->belongsTo(User::class, 'id_usuario', 'id_usuario');
     }
+
+    public function invitados()
+    {
+        return $this->hasMany(Invitado::class, 'id_socio', 'id_socio');
+    }
 }
