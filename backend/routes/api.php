@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\ConfirmPasswordController;
 use App\Http\Controllers\Api\NotificacionesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SocioPortalController;
+use App\Http\Controllers\Api\InvitadoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -78,6 +79,12 @@ Route::middleware(['restrict.instructor'])->group(function () {
     Route::get('/dependientes', [SocioController::class, 'dependientes']);
     Route::get('/titulares',    [SocioController::class, 'titulares']);
     Route::get('/socios/{id}/verificar-acceso', [SocioController::class, 'verificarAcceso']);
+
+    // MÓDULO INVITADOS
+    Route::apiResource('invitados', InvitadoController::class);
+    Route::post('/invitados/{id}/marcar-asistencia', [InvitadoController::class, 'marcarAsistencia']);
+    Route::get('/socios/{id}/invitados', [InvitadoController::class, 'porSocio']);
+    Route::post('/invitados/expirar-antiguos', [InvitadoController::class, 'expirarAntiguos']);
 
     // MÓDULO DE ACTIVIDADES — AGENDA
     Route::get('/agenda',        [AgendaController::class, 'index']);
