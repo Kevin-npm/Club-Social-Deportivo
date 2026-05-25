@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SocioPortalController;
 use App\Http\Controllers\Api\InvitadoController;
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\SocioPdfController;
 
 /*
 |--------------------------------------------------------------------------
@@ -165,3 +166,9 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 Route::get('/admin/dashboard/metrics', [AdminDashboardController::class, 'metrics']);
+
+Route::post('/socios/importar', [SocioImportController::class, 'import']);
+Route::get('/socios/exportar/csv', [SocioImportController::class, 'exportCsv']);
+Route::get('/socios/plantilla/csv', [SocioImportController::class, 'templateCsv']);
+
+Route::get('/socios/exportar/pdf', [SocioPdfController::class, 'exportarPdf']);

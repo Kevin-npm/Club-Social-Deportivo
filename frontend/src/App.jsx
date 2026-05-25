@@ -1,8 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+
+import { AuthProvider } from "./context/AuthContext";
+
+import ProtectedRoute from "./components/ProtectedRoute";
+import RedirectByRole from "./components/RedirectByRole";
+
+import MainLayout from "./layouts/MainLayout";
+import SocioLayout from "./layouts/SocioLayout";
+
+import Login from "./pages/Login";
+import SetPassword from "./pages/SetPassword";
+
+import Dashboard from "./pages/Dashboard";
 import DashboardInstructor from "./pages/DashboardInstructor";
 import Recepcion from "./pages/Recepcion";
-import MainLayout from "./layouts/MainLayout";
-import Dashboard from "./pages/Dashboard";
 import Socios from "./pages/Socios";
 import CheckIn from "./pages/Checkin";
 import Instalaciones from "./pages/Instalaciones";
@@ -13,27 +24,26 @@ import Sesiones from "./pages/Sesiones";
 import Pagos from "./pages/Pagos";
 import Torneos from "./pages/Torneos";
 import CalendarioInstructor from "./pages/CalendarioInstructor";
-import RedirectByRole from "./components/RedirectByRole";
-import SetPassword from "./pages/SetPassword";
 import SocioImport from "./pages/admin/SocioImport";
 
-import Login from "./pages/Login";
-import SocioLayout from "./layouts/SocioLayout";
 import SocioHome from "./pages/socio/SocioHome";
 import SocioReservas from "./pages/socio/SocioReservas";
 import SocioPagos from "./pages/socio/SocioPagos";
 import SocioNotificaciones from "./pages/socio/SocioNotificaciones";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { AuthProvider } from "./context/AuthContext";
 
 function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+          {/* Rutas públicas */}
           <Route path="/login" element={<Login />} />
           <Route path="/set-password" element={<SetPassword />} />
 
+          {/* Redirección raíz según sesión/rol */}
+          <Route path="/" element={<RedirectByRole />} />
+
+          {/* Portal exclusivo para socios */}
           <Route
             path="/socio"
             element={
@@ -48,10 +58,15 @@ function App() {
             <Route path="notificaciones" element={<SocioNotificaciones />} />
           </Route>
 
-          <Route element={<MainLayout />}>
-            <Route index element={<RedirectByRole />} />
+          {/* Panel administrativo */}
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/dashboard-instructor" element={<DashboardInstructor />} />
             <Route path="/instalaciones" element={<Instalaciones />} />
             <Route path="/recepcion" element={<Recepcion />} />
             <Route path="/socios" element={<Socios />} />
@@ -63,13 +78,28 @@ function App() {
             <Route path="/sesiones" element={<Sesiones />} />
             <Route path="/pagos" element={<Pagos />} />
             <Route path="/socios/importar" element={<SocioImport />} />
+          </Route>
+
+          {/* Panel exclusivo para instructor */}
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={["instructor"]}>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              path="/dashboard-instructor"
+              element={<DashboardInstructor />}
+            />
             <Route
               path="/calendario-instructor"
               element={<CalendarioInstructor />}
             />
           </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* Cualquier ruta inválida */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

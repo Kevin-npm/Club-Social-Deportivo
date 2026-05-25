@@ -1,16 +1,21 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export default function ProtectedRoute({ children, allowedRoles }) {
-  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const { token, user } = useAuth();
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (!token) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    if (user.role === "socio") {
+  if (allowedRoles?.length && !allowedRoles.includes(user?.role)) {
+    if (user?.role === "socio") {
       return <Navigate to="/socio" replace />;
+    }
+
+    if (user?.role === "instructor") {
+      return <Navigate to="/calendario-instructor" replace />;
     }
 
     return <Navigate to="/dashboard" replace />;
