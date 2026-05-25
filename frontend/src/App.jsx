@@ -15,6 +15,7 @@ import Torneos from "./pages/Torneos";
 import CalendarioInstructor from "./pages/CalendarioInstructor";
 import RedirectByRole from "./components/RedirectByRole";
 import SetPassword from "./pages/SetPassword";
+import SocioImport from "./pages/admin/SocioImport";
 
 import Login from "./pages/Login";
 import SocioLayout from "./layouts/SocioLayout";
@@ -61,6 +62,7 @@ function App() {
             <Route path="/actividades" element={<Actividades />} />
             <Route path="/sesiones" element={<Sesiones />} />
             <Route path="/pagos" element={<Pagos />} />
+            <Route path="/socios/importar" element={<SocioImport />} />
             <Route
               path="/calendario-instructor"
               element={<CalendarioInstructor />}

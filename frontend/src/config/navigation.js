@@ -10,6 +10,7 @@ import {
   BellPlus,
   Banknote,
   Activity,
+  Upload,
 } from "lucide-react";
 
 // Fuente central de navegación
@@ -43,6 +44,12 @@ export const MenuItems = [
     title: "Socios",
     icon: Users,
     path: "/socios",
+    roles: ["admin"],
+  },
+  {
+    title: "Importar Socios",
+    icon: Upload,
+    path: "/socios/importar",
     roles: ["admin"],
   },
   {
