@@ -20,20 +20,18 @@ const DashboardInstructor = () => {
     ];
 
     return (
-        <div className="space-y-6 text-gray-200 animate-in fade-in duration-500">
-            
+        <div className="space-y-6 p-4 md:p-6 text-gray-200 animate-in fade-in duration-500">
             {/* ENCABEZADO */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
                 <div>
-                    <h1 className="text-4xl font-extrabold text-white flex items-center gap-3">
+                    <h1 className="text-2xl md:text-4xl font-extrabold text-white flex items-center gap-3">
                         <Activity className="text-yellow-400" size={36} /> 
                         Mi Rendimiento
                     </h1>
                     <p className="text-gray-400 mt-2">Métricas personales y estadísticas de tus clases</p>
                 </div>
                 
-                {/* Botón de Filtros (Preparando terreno para CM3-178) */}
-                <button className="bg-[#1a1d23] border border-gray-800 hover:border-yellow-400 text-white px-5 py-3 rounded-xl transition-colors flex items-center gap-2 shadow-lg">
+                <button className="bg-[#1a1d23] border border-gray-800 hover:border-yellow-400 text-white px-5 py-3 rounded-xl transition-colors flex items-center gap-2 shadow-lg self-start">
                     <Filter size={18} className="text-gray-400" />
                     Filtrar por Mes
                 </button>
@@ -43,7 +41,7 @@ const DashboardInstructor = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 {/* Tarjeta 1: Clases Impartidas */}
-                <div className="bg-[#14171c] border border-gray-800 rounded-2xl p-6 shadow-xl relative overflow-hidden group hover:border-yellow-400/50 transition-colors">
+                <div className="bg-[#14171c] border border-gray-800 rounded-2xl p-4 md:p-6 shadow-xl relative overflow-hidden group hover:border-yellow-400/50 transition-colors">
                     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                         <CalendarDays size={64} className="text-yellow-400" />
                     </div>

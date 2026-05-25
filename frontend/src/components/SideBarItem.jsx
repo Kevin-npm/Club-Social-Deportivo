@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
 
-export const SidebarItem = ({ item }) => {
+export const SidebarItem = ({ item, onClick }) => {
   const { title, icon: Icon, path } = item;
 
   return (
     <NavLink
       to={path}
       end={path === "/"}
+      onClick={onClick}
       className={({ isActive }) =>
         `flex items-center px-3 py-2.5 rounded-lg font-medium transition-colors ${
           isActive

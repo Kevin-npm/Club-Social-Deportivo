@@ -9,10 +9,14 @@ import {
   Pencil,
   BadgeCheck,
   UserRoundSearch,
+  UserPlus,
+  Calendar,
+  DoorOpen,
 } from "lucide-react";
 
 const API_URL = "http://localhost:8000/api/socios";
 const API_DEPENDIENTES = "http://localhost:8000/api/dependientes";
+const API_INVITADOS = "http://localhost:8000/api/invitados";
 
 const initialEditForm = {
   nombre: "",
@@ -34,6 +38,12 @@ const initialCreateForm = {
   telefono: "",
   tipo_membresia: "",
   modalidad: "",
+};
+
+const initialInvitadoForm = {
+  nombre: "",
+  apellidos: "",
+  observaciones: "",
 };
 
 const fieldBaseClass =
@@ -66,9 +76,20 @@ const Socios = () => {
   const [filterModalidad, setFilterModalidad] = useState("");
   const [filterEstatus, setFilterEstatus] = useState("");
 
-  const [activeMenu, setActiveMenu] = useState(null); // Para controlar qué menú de tres puntos está abierto
+  const [activeMenu, setActiveMenu] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewingSocio, setViewingSocio] = useState(null);
+
+  const [invitados, setInvitados] = useState([]);
+  const [showInvitadoModal, setShowInvitadoModal] = useState(false);
+  const [invitadoFormData, setInvitadoFormData] = useState(initialInvitadoForm);
+  const [invitadoSocioId, setInvitadoSocioId] = useState(null);
+  const [invitadoSocioNombre, setInvitadoSocioNombre] = useState("");
+  const [savingInvitado, setSavingInvitado] = useState(false);
+  const [invitadoError, setInvitadoError] = useState("");
+  const [showInvitadosTable, setShowInvitadosTable] = useState(false);
+  const [filterInvitadoEstatus, setFilterInvitadoEstatus] = useState("");
+  const [filterInvitadoFecha, setFilterInvitadoFecha] = useState("");
 
   const fetchSocios = async () => {
     const res = await fetch(API_URL, {
@@ -104,11 +125,33 @@ const Socios = () => {
     setDependientes(result.data || []);
   };
 
+  const fetchInvitados = async () => {
+    const params = new URLSearchParams();
+    if (filterInvitadoFecha) params.set("fecha", filterInvitadoFecha);
+    if (filterInvitadoEstatus) params.set("estatus", filterInvitadoEstatus);
+
+    const res = await fetch(`${API_INVITADOS}?${params.toString()}`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    const result = await res.json();
+
+    if (!res.ok) {
+      throw new Error(
+        result.message || "No se pudo obtener la lista de invitados"
+      );
+    }
+
+    setInvitados(result.data || []);
+  };
+
   const cargarTodo = async () => {
     try {
       setLoading(true);
       setError("");
-      await Promise.all([fetchSocios(), fetchDependientes()]);
+      await Promise.all([fetchSocios(), fetchDependientes(), fetchInvitados()]);
     } catch (err) {
       console.error("Error al cargar socios:", err);
       setError(err.message || "Error al cargar socios.");
@@ -396,6 +439,117 @@ const Socios = () => {
     }, 100);
   };
 
+  const openInvitadoModal = (socio) => {
+    setInvitadoSocioId(socio.id_socio);
+    setInvitadoSocioNombre(`${socio.nombre} ${socio.apellidos}`);
+    setInvitadoFormData(initialInvitadoForm);
+    setInvitadoError("");
+    setShowInvitadoModal(true);
+  };
+
+  const closeInvitadoModal = () => {
+    setShowInvitadoModal(false);
+    setInvitadoSocioId(null);
+    setInvitadoSocioNombre("");
+    setInvitadoFormData(initialInvitadoForm);
+    setInvitadoError("");
+  };
+
+  const handleInvitadoChange = (e) => {
+    const { name, value } = e.target;
+    setInvitadoFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleRegistrarInvitado = async (e) => {
+    e.preventDefault();
+
+    try {
+      setSavingInvitado(true);
+      setInvitadoError("");
+
+      const payload = {
+        id_socio: invitadoSocioId,
+        ...invitadoFormData,
+      };
+
+      const res = await fetch(API_INVITADOS, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "No se pudo registrar el invitado");
+      }
+
+      await fetchInvitados();
+      closeInvitadoModal();
+    } catch (err) {
+      console.error("Error al registrar invitado:", err);
+      setInvitadoError(err.message || "Error al registrar invitado.");
+    } finally {
+      setSavingInvitado(false);
+    }
+  };
+
+  const handleMarcarAsistencia = async (id) => {
+    try {
+      setError("");
+
+      const res = await fetch(`${API_INVITADOS}/${id}/marcar-asistencia`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "No se pudo marcar la asistencia");
+      }
+
+      await fetchInvitados();
+    } catch (err) {
+      console.error("Error al marcar asistencia:", err);
+      setError(err.message || "Error al marcar asistencia.");
+    }
+  };
+
+  const handleEliminarInvitado = async (id) => {
+    if (!window.confirm("¿Estás seguro de eliminar este invitado?")) return;
+
+    try {
+      setError("");
+
+      const res = await fetch(`${API_INVITADOS}/${id}`, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.message || "No se pudo eliminar el invitado");
+      }
+
+      await fetchInvitados();
+    } catch (err) {
+      console.error("Error al eliminar invitado:", err);
+      setError(err.message || "Error al eliminar invitado.");
+    }
+  };
+
   const showCreateVigencia = createFormData.tipo_membresia === "Rentista";
   const showEditVigencia = editFormData.tipo_membresia === "Rentista";
 
@@ -446,6 +600,40 @@ const Socios = () => {
 
     return "bg-slate-500/15 text-slate-300 border border-slate-500/20";
   };
+
+  const getInvitadoStatusBadge = (status) => {
+    const normalized = (status || "").toLowerCase();
+
+    if (normalized === "pendiente") {
+      return "bg-blue-500/15 text-blue-400 border border-blue-500/20";
+    }
+
+    if (normalized === "autorizado") {
+      return "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20";
+    }
+
+    if (normalized === "usado") {
+      return "bg-gray-500/15 text-gray-400 border border-gray-500/20";
+    }
+
+    if (normalized === "expirado") {
+      return "bg-red-500/15 text-red-400 border border-red-500/20";
+    }
+
+    return "bg-slate-500/15 text-slate-300 border border-slate-500/20";
+  };
+
+  const invitadosFiltrados = useMemo(() => {
+    return invitados.filter((inv) => {
+      const matchesSearch = !searchTerm ||
+        inv.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.apellidos.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesEstatus = !filterInvitadoEstatus || inv.estatus === filterInvitadoEstatus;
+
+      return matchesSearch && matchesEstatus;
+    });
+  }, [invitados, searchTerm, filterInvitadoEstatus]);
 
   return (
     <div className="space-y-6">
@@ -520,7 +708,7 @@ const Socios = () => {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-gray-800 bg-[#14171c]">
-        <div className="flex items-center justify-between border-b border-gray-800 px-6 py-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-800 px-6 py-5">
           <div>
             <h2 className="text-3xl font-bold text-white">Directorio de socios</h2>
             {selectedSocios.length > 0 && (
@@ -528,6 +716,20 @@ const Socios = () => {
                 {selectedSocios.length} seleccionado(s)
               </p>
             )}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowInvitadosTable(!showInvitadosTable)}
+              className={`flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                showInvitadosTable
+                  ? "border-cyan-500/30 bg-cyan-500/15 text-cyan-300"
+                  : "border-gray-700 bg-[#0f131a] text-gray-300 hover:border-gray-600 hover:text-white"
+              }`}
+            >
+              <DoorOpen size={16} />
+              {showInvitadosTable ? "Ver socios" : "Ver invitados"}
+            </button>
           </div>
 
           <div className="grid grid-cols-1 gap-4 border-b border-gray-800 px-6 py-4 md:grid-cols-4">
@@ -734,6 +936,14 @@ const Socios = () => {
                                   Editar Socio
                                 </button>
 
+                                <button
+                                  onClick={() => { openInvitadoModal(socio); setActiveMenu(null); }}
+                                  className="flex w-full items-center px-4 py-2.5 text-sm text-gray-300 hover:bg-white/10 transition"
+                                >
+                                  <UserPlus size={16} className="mr-3 text-cyan-400" />
+                                  Registrar invitado
+                                </button>
+
                                 {socio.es_titular && socio.modalidad === "Familiar" && (
                                   <button
                                     onClick={() => { handleAgregarDependiente(socio.id_socio); setActiveMenu(null); }}
@@ -766,6 +976,154 @@ const Socios = () => {
           </div>
         )}
       </section>
+
+      {showInvitadosTable && (
+        <section className="overflow-hidden rounded-2xl border border-cyan-800/30 bg-[#14171c]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-800 px-6 py-5">
+            <div>
+              <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                <DoorOpen size={28} className="text-cyan-400" />
+                Control de invitados
+              </h2>
+              <p className="mt-1 text-sm text-gray-400">
+                Invitados registrados &mdash; v&aacute;lidos solo por el d&iacute;a
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <input
+                type="date"
+                value={filterInvitadoFecha}
+                onChange={(e) => { setFilterInvitadoFecha(e.target.value); fetchInvitados(); }}
+                className="rounded-xl border border-gray-700 bg-[#0f131a] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400"
+              />
+
+              <select
+                value={filterInvitadoEstatus}
+                onChange={(e) => { setFilterInvitadoEstatus(e.target.value); fetchInvitados(); }}
+                className="rounded-xl border border-gray-700 bg-[#0f131a] px-3 py-2 text-sm text-white outline-none focus:border-cyan-400"
+              >
+                <option value="">Todos los estatus</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Autorizado">Autorizado</option>
+                <option value="Usado">Usado</option>
+                <option value="Expirado">Expirado</option>
+              </select>
+
+              <button
+                onClick={fetchInvitados}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-700 bg-[#1b2130] text-gray-300 transition hover:border-gray-600 hover:text-white"
+                title="Recargar invitados"
+              >
+                <RefreshCcw size={18} />
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="px-6 py-16 text-center text-gray-400">
+              Cargando invitados...
+            </div>
+          ) : invitadosFiltrados.length === 0 ? (
+            <div className="px-6 py-16 text-center text-gray-500">
+              No hay invitados registrados.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-[#14171c]">
+                  <tr className="border-b border-gray-800 text-left">
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      ID
+                    </th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Nombre
+                    </th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Socio que invita
+                    </th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Fecha registro
+                    </th>
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Estatus
+                    </th>
+                    {invitadosFiltrados[0]?.observaciones && (
+                      <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                        Observaciones
+                      </th>
+                    )}
+                    <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-gray-800">
+                  {invitadosFiltrados.map((inv) => (
+                    <tr
+                      key={inv.id_invitado}
+                      className="transition hover:bg-white/[0.02]"
+                    >
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {inv.id_invitado}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-semibold text-white">
+                        {inv.nombre} {inv.apellidos}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {inv.socio
+                          ? `${inv.socio.nombre} ${inv.socio.apellidos}`
+                          : "—"}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        <span className="flex items-center gap-1.5">
+                          <Calendar size={14} className="text-gray-500" />
+                          {inv.fecha_registro?.slice(0, 10)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getInvitadoStatusBadge(
+                            inv.estatus
+                          )}`}
+                        >
+                          {inv.estatus}
+                        </span>
+                      </td>
+                      {invitadosFiltrados[0]?.observaciones && (
+                        <td className="px-6 py-4 text-sm text-gray-400 max-w-xs truncate">
+                          {inv.observaciones || "—"}
+                        </td>
+                      )}
+                      <td className="px-6 py-4">
+                        <div className="flex gap-2">
+                          {(inv.estatus === "Pendiente" || inv.estatus === "Autorizado") && (
+                            <button
+                              onClick={() => handleMarcarAsistencia(inv.id_invitado)}
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20"
+                            >
+                              <CircleCheckBig size={14} />
+                              Marcar entrada
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleEliminarInvitado(inv.id_invitado)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-500/20"
+                          >
+                            <CircleOff size={14} />
+                            Eliminar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
@@ -1124,6 +1482,99 @@ const Socios = () => {
             </div>
           </div>
         )}
+
+      {showInvitadoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-cyan-800/30 bg-[#14171c] p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                  <UserPlus size={24} className="text-cyan-400" />
+                  Registrar invitado
+                </h2>
+                <p className="mt-1 text-sm text-gray-400">
+                  Invitado de: <span className="text-white font-medium">{invitadoSocioNombre}</span>
+                </p>
+              </div>
+              <button onClick={closeInvitadoModal} className="text-gray-400 hover:text-white transition text-3xl">&times;</button>
+            </div>
+
+            {invitadoError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 mb-4">
+                {invitadoError}
+              </div>
+            )}
+
+            <form onSubmit={handleRegistrarInvitado} className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Nombre</label>
+                  <input
+                    type="text"
+                    name="nombre"
+                    value={invitadoFormData.nombre}
+                    onChange={handleInvitadoChange}
+                    className={fieldBaseClass}
+                    required
+                    placeholder="Nombre del invitado"
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>Apellidos</label>
+                  <input
+                    type="text"
+                    name="apellidos"
+                    value={invitadoFormData.apellidos}
+                    onChange={handleInvitadoChange}
+                    className={fieldBaseClass}
+                    required
+                    placeholder="Apellidos del invitado"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={labelClass}>Observaciones (opcional)</label>
+                <textarea
+                  name="observaciones"
+                  value={invitadoFormData.observaciones}
+                  onChange={handleInvitadoChange}
+                  className={`${fieldBaseClass} resize-none`}
+                  rows={3}
+                  placeholder="Nota adicional sobre el invitado..."
+                />
+              </div>
+
+              <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-sm text-cyan-300">
+                <p className="font-medium">Nota importante:</p>
+                <p className="text-cyan-400/80 mt-1">
+                  El invitado solo es v&aacute;lido por el d&iacute;a de registro. 
+                  El socio puede registrar un m&aacute;ximo de 2 invitados por d&iacute;a.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeInvitadoModal}
+                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={savingInvitado}
+                  className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-cyan-400 disabled:opacity-60"
+                >
+                  {savingInvitado ? "Guardando..." : "Registrar invitado"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

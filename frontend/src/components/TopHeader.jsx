@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Bell, Check, Repeat } from "lucide-react";
+import { Bell, Check, Menu, Repeat } from "lucide-react";
 import { headerActions } from "../config/header_actions";
 import { useRoleSimulator } from "../context/RoleSimulatorContext";
 
 const SOCIO_ID_SIMULADO = 2;
 
-const TopHeader = () => {
+const TopHeader = ({ onMenuToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { fakeRole, toggleRole, isAdmin } = useRoleSimulator();
@@ -74,15 +74,24 @@ const TopHeader = () => {
   };
 
   return (
-    <header className="h-20 bg-[#14171c] border-b border-gray-800 flex items-center justify-between px-8">
-      <h1 className="text-xl font-bold capitalize">{pageTitle}</h1>
+    <header className="h-16 md:h-20 bg-[#14171c] border-b border-gray-800 flex items-center justify-between px-4 md:px-8 shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          onClick={onMenuToggle}
+          className="md:hidden p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors shrink-0"
+          aria-label="Abrir menú"
+        >
+          <Menu size={20} />
+        </button>
+        <h1 className="text-lg md:text-xl font-bold capitalize truncate">{pageTitle}</h1>
+      </div>
 
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
         {currentActions.map((btn, index) => (
           <button
             key={index}
             onClick={btn.action}
-            className={`flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105 ${btn.color}`}
+            className="hidden md:flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-105 bg-yellow-400 text-black"
           >
             <btn.icon size={18} className="mr-2" />
             {btn.label}
@@ -183,23 +192,24 @@ const TopHeader = () => {
           )}
         </div>
 
-        <button
+        {/* <button
           onClick={handleRoleChange}
-          className="flex items-center px-4 py-2 rounded-lg text-sm font-bold bg-gray-800 text-white border border-gray-700 transition-all hover:scale-105"
+          className="flex items-center px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold bg-gray-800 text-white border border-gray-700 transition-all hover:scale-105"
           title="Cambiar vista temporal"
         >
-          <Repeat size={18} className="mr-2" />
-          {isAdmin ? "Cambiar a Instructor" : "Cambiar a Admin"}
-        </button>
+          <Repeat size={16} className="mr-1.5 md:mr-2" />
+          <span className="hidden sm:inline">{isAdmin ? "Cambiar a Instructor" : "Cambiar a Admin"}</span>
+          <span className="sm:hidden">{isAdmin ? "Instructor" : "Admin"}</span>
+        </button> */}
 
-        <div className="w-px h-8 bg-gray-800 mx-2" />
+        <div className="w-px h-6 md:h-8 bg-gray-800 mx-1 md:mx-2" />
 
-        <div className="flex items-center space-x-3">
-          <div className="text-right">
-            <p className="text-sm font-bold">Usuario</p>
-            <p className="text-xs text-yellow-400 capitalize">{fakeRole}</p>
+        <div className="flex items-center gap-2 md:gap-3">
+          <div className="hidden sm:block text-right">
+            <p className="text-xs md:text-sm font-bold">Usuario</p>
+            <p className="text-[10px] md:text-xs text-yellow-400 capitalize">{fakeRole}</p>
           </div>
-          <div className="w-10 h-10 bg-gray-700 rounded-full border-2 border-yellow-400" />
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-700 rounded-full border-2 border-yellow-400" />
         </div>
       </div>
     </header>

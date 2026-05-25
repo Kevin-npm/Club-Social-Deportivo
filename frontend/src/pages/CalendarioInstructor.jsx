@@ -192,7 +192,7 @@ const CalendarioInstructor = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div className="bg-[#14171c] rounded-xl border border-gray-800 p-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl md:text-3xl font-bold text-white">

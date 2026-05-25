@@ -15,7 +15,7 @@ import {
 // Fuente central de navegación
 export const MenuItems = [
   {
-    title: "Dashboard",
+    title: "Dashboard Ludoteca",
     icon: LayoutDashboard,
     path: "/dashboard",
     roles: ["admin", "instructor"],
@@ -81,16 +81,16 @@ export const MenuItems = [
     path: "/torneos",
     roles: ["admin", "instructor"],
   },
-  {
-    title: "Check-in",
-    icon: BellPlus,
-    path: "/check-in",
-    roles: ["admin"],
-  },
-  {
-    title: "Pagos",
-    icon: Banknote,
-    path: "/pagos",
-    roles: ["admin"],
-  },
+  // {
+  //   title: "Check-in",
+  //   icon: BellPlus,
+  //   path: "/check-in",
+  //   roles: ["admin"],
+  // },
+  // // {
+  //   title: "Pagos",
+  //   icon: Banknote,
+  //   path: "/pagos",
+  //   roles: ["admin"],
+  // },
 ];

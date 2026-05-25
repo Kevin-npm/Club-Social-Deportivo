@@ -86,10 +86,10 @@ const Pagos = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
 
       {/* ── StatCards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard title="Total pagos"    value={stats.totalPagos}                        icon={<FileText size={20}/>}    color="text-blue-400"/>
         <StatCard title="Monto total"    value={`$${stats.montoTotal.toLocaleString("es-MX", {minimumFractionDigits: 2})}`} icon={<DollarSign size={20}/>}  color="text-green-400"/>
         <StatCard title="Pagos hoy"      value={stats.pagosHoy}                          icon={<Clock size={20}/>}       color="text-yellow-400"/>
@@ -100,7 +100,7 @@ const Pagos = () => {
       <div className="bg-[#14171c] rounded-xl border border-gray-800 overflow-hidden">
 
         {/* Header */}
-        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+        <div className="p-5 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-2">
             <CreditCard size={18} className="text-blue-400"/>
             <h2 className="text-lg font-bold">Registro de Pagos</h2>
@@ -168,7 +168,7 @@ const Pagos = () => {
                 placeholder="Buscar por socio, folio o concepto..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-72 bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full sm:w-72 bg-gray-900 border border-gray-700 rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-gray-500 focus:border-blue-500 outline-none transition-all"
               />
               {searchQuery && (
                 <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
@@ -357,7 +357,7 @@ const AddPagoModal = ({ onClose, onRefresh }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-[#1c1f26] border border-gray-800 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-[#1c1f26] border border-gray-800 w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
 
         {/* Header */}
         <div className="p-5 border-b border-gray-800 flex justify-between items-center bg-[#23272f]">

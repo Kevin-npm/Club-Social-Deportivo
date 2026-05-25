@@ -8,6 +8,7 @@ class Agenda extends Model
 {
     protected $table      = 'tbl_agenda';
     protected $primaryKey = 'id_sesion';
+    public $timestamps = false;
 
     protected $fillable = [
         'id_disciplina',

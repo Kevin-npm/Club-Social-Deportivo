@@ -19,6 +19,8 @@ use App\Http\Controllers\Api\ConfirmPasswordController;
 use App\Http\Controllers\Api\NotificacionesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SocioPortalController;
+use App\Http\Controllers\Api\InvitadoController;
+use App\Http\Controllers\Api\AdminDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -79,6 +81,12 @@ Route::middleware(['restrict.instructor'])->group(function () {
     Route::get('/titulares',    [SocioController::class, 'titulares']);
     Route::get('/socios/{id}/verificar-acceso', [SocioController::class, 'verificarAcceso']);
 
+    // MÓDULO INVITADOS
+    Route::apiResource('invitados', InvitadoController::class);
+    Route::post('/invitados/{id}/marcar-asistencia', [InvitadoController::class, 'marcarAsistencia']);
+    Route::get('/socios/{id}/invitados', [InvitadoController::class, 'porSocio']);
+    Route::post('/invitados/expirar-antiguos', [InvitadoController::class, 'expirarAntiguos']);
+
     // MÓDULO DE ACTIVIDADES — AGENDA
     Route::get('/agenda',        [AgendaController::class, 'index']);
     Route::get('/agenda/{id}',   [AgendaController::class, 'show']);
@@ -124,6 +132,9 @@ Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'getM
 
 Route::post('/ludoteca/ingreso', [LudotecaController::class, 'registrarIngreso']);
 Route::post('/ludoteca/salida', [LudotecaController::class, 'registrarSalida']);
+Route::post('/ludoteca/ajustar-tiempo', [LudotecaController::class, 'ajustarTiempo']);
+Route::post('/ludoteca/reset-tiempo', [LudotecaController::class, 'resetTiempo']);
+Route::get('/ludoteca/mi-status', [LudotecaController::class, 'miStatus']);
 
 Route::get('/checkins/buscar', [CheckinController::class, 'buscarSocio']);
 Route::get('/checkins',  [CheckinController::class, 'index']);
@@ -139,7 +150,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('/socio/perfil', [SocioPortalController::class, 'perfil']);
+    Route::get('/socio/reservas/disponibilidad', [SocioPortalController::class, 'disponibilidad']);
     Route::get('/socio/reservas', [SocioPortalController::class, 'reservas']);
+    Route::post('/socio/reservas', [SocioPortalController::class, 'crearReserva']);
     Route::get('/socio/pagos', [SocioPortalController::class, 'pagos']);
     Route::get('/socio/notificaciones', [SocioPortalController::class, 'notificaciones']);
     Route::patch('/socio/notificaciones/{id}/leer', [SocioPortalController::class, 'marcarNotificacionComoLeida']);
@@ -148,3 +161,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/socio/reservas/{id}/cancelar', [SocioPortalController::class, 'cancelarReserva']);
     Route::get('/socio/pagos/{id}', [SocioPortalController::class, 'detallePago']);
 });
+
+Route::get('/admin/dashboard/metrics', [AdminDashboardController::class, 'metrics']);

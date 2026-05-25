@@ -188,7 +188,7 @@ const Facilities = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
       {/* 1. Encabezado y Estadísticas Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard
@@ -220,8 +220,8 @@ const Facilities = () => {
       <div className="w-full space-y-6">
         {/* 2. Tabla de Directorio (Ocupa 2 columnas) */}
         <div className="lw-full bg-[#14171c] rounded-xl border border-gray-800 overflow-hidden">
-          <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-            <h2 className="text-xl font-bold">Directorio de Instalaciones</h2>
+          <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h2 className="text-lg md:text-xl font-bold">Directorio de Instalaciones</h2>
             <button
               onClick={getFacilities}
               title="Actualizar tabla"

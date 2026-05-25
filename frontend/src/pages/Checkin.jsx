@@ -128,7 +128,7 @@ const CheckinPage = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6">
 
       {/* ── StatCards ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -236,7 +236,7 @@ const CheckinPage = () => {
 
         {/* ── Historial del día ── */}
         <div className="bg-[#14171c] rounded-xl border border-gray-800 overflow-hidden">
-          <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+          <div className="p-5 border-b border-gray-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2">
               <Clock size={16} className="text-blue-400"/>
               <h3 className="font-bold">Historial</h3>
