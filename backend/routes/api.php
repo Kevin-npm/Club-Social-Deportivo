@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\InstructorController;
 use App\Http\Controllers\Api\InstalacionesController;
 use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\ReservasController;
+use App\Http\Controllers\Api\SocioImportController;
 use App\Http\Controllers\Api\AsistenciasController;
 use App\Http\Controllers\Api\CheckinController;
 use App\Http\Controllers\Api\PagosController;
@@ -74,6 +75,7 @@ Route::post('/confirmar-password', [ConfirmPasswordController::class, 'store']);
 Route::middleware(['restrict.instructor'])->group(function () {
     
     // MÓDULO SOCIOS
+    Route::post('/socios/importar', [SocioImportController::class, 'import']);
     Route::apiResource('socios', SocioController::class);
     Route::patch('/socios/{id}/activar', [SocioController::class, 'activarMembresia']);
     Route::get('/dependientes', [SocioController::class, 'dependientes']);
