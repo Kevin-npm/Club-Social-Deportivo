@@ -22,12 +22,6 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SocioPortalController;
 use App\Http\Controllers\Api\InvitadoController;
 
-/*
-|--------------------------------------------------------------------------
-| RUTAS DE PRUEBA
-|--------------------------------------------------------------------------
-*/
-
 Route::get('/test-db', function () {
     DB::table('users')->insert([
         'name'       => 'API User 2',
@@ -43,12 +37,6 @@ Route::get('/test', function () {
     return response()->json(['mensaje' => 'API funcionando correctamente']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| RUTAS PÚBLICAS O DE CONSULTA GENERAL
-|--------------------------------------------------------------------------
-*/
-
 Route::get('/instalaciones',       [InstalacionesController::class, 'index']);
 Route::get('/instalaciones/{id}',  [InstalacionesController::class, 'show']);
 Route::get('/categorias',          [InstalacionesController::class, 'getCategories']);
@@ -60,21 +48,21 @@ Route::get('/pagos/metodos', [PagosController::class, 'getMetodos']);
 Route::get('/pagos',        [PagosController::class, 'index']);
 Route::get('/pagos/{id}',   [PagosController::class, 'show']);
 
+// --- RUTAS DE TORNEOS (EL MOTOR CHAMPIONS) ---
 Route::get('/torneos', [TorneoController::class, 'index']);
+Route::get('/torneos/{id}/inscripciones', [TorneoController::class, 'getInscripciones']);
+Route::post('/torneos/{id}/inscribir', [TorneoController::class, 'inscribir']);
+Route::put('/inscripciones/{id}', [TorneoController::class, 'editarInscripcion']);
+Route::delete('/inscripciones/{id}', [TorneoController::class, 'eliminarInscripcion']);
+
+Route::post('/torneos/{id}/sorteo', [TorneoController::class, 'generarSorteo']);
+Route::get('/torneos/{id}/llaves', [TorneoController::class, 'getLlaves']);
+Route::post('/encuentros/{id}/marcador', [TorneoController::class, 'guardarMarcador']);
+Route::post('/torneos/{id}/clasificar', [TorneoController::class, 'generarClasificacion']);
 
 Route::post('/confirmar-password', [ConfirmPasswordController::class, 'store']);
 
-/*
-|--------------------------------------------------------------------------
-| RUTAS PROTEGIDAS (Bloquean POST/PUT/DELETE para instructores)
-|--------------------------------------------------------------------------
-| El middleware 'restrict.instructor' interceptará cualquier intento
-| de modificación en estas rutas si el usuario tiene rol de instructor.
-*/
-
 Route::middleware(['restrict.instructor'])->group(function () {
-    
-    // MÓDULO SOCIOS
     Route::post('/socios/importar', [SocioImportController::class, 'import']);
     Route::apiResource('socios', SocioController::class);
     Route::patch('/socios/{id}/activar', [SocioController::class, 'activarMembresia']);
@@ -82,54 +70,35 @@ Route::middleware(['restrict.instructor'])->group(function () {
     Route::get('/titulares',    [SocioController::class, 'titulares']);
     Route::get('/socios/{id}/verificar-acceso', [SocioController::class, 'verificarAcceso']);
 
-    // MÓDULO INVITADOS
     Route::apiResource('invitados', InvitadoController::class);
     Route::post('/invitados/{id}/marcar-asistencia', [InvitadoController::class, 'marcarAsistencia']);
     Route::get('/socios/{id}/invitados', [InvitadoController::class, 'porSocio']);
     Route::post('/invitados/expirar-antiguos', [InvitadoController::class, 'expirarAntiguos']);
 
-    // MÓDULO DE ACTIVIDADES — AGENDA
     Route::get('/agenda',        [AgendaController::class, 'index']);
     Route::get('/agenda/{id}',   [AgendaController::class, 'show']);
     Route::post('/agenda',       [AgendaController::class, 'store']);
     Route::put('/agenda/{id}',   [AgendaController::class, 'update']);
     Route::delete('/agenda/{id}',[AgendaController::class, 'destroy']);
 
-    // MÓDULO DE ACTIVIDADES — RESERVAS
     Route::get('/reservas',         [ReservasController::class, 'index']);
     Route::get('/reservas/{id}',    [ReservasController::class, 'show']);
-    Route::post('/reservas', [ReservasController::class, 'store'])
-    ->middleware('bloquear.sancionado');
+    Route::post('/reservas', [ReservasController::class, 'store'])->middleware('bloquear.sancionado');
     Route::put('/reservas/{id}',    [ReservasController::class, 'update']);
     Route::delete('/reservas/{id}', [ReservasController::class, 'destroy']);
     
-    // OTRAS MODIFICACIONES DEL SISTEMA
     Route::post('/instalaciones',      [InstalacionesController::class, 'store']);
     Route::put('/instalaciones/{id}',  [InstalacionesController::class, 'update']);
     Route::apiResource('torneos', TorneoController::class)->except(['index']);
     Route::post('/pagos',       [PagosController::class, 'store']);
 });
 
-/*
-|--------------------------------------------------------------------------
-| MÓDULO INSTRUCTORES Y SUS HERRAMIENTAS
-|--------------------------------------------------------------------------
-*/
-
 Route::apiResource('instructors', InstructorController::class);
-
 Route::get('/asistencias/sesion/{id_sesion}', [AsistenciasController::class, 'porSesion']);
 Route::get('/asistencias',        [AsistenciasController::class, 'index']);
 Route::post('/asistencias',       [AsistenciasController::class, 'store']);
 Route::delete('/asistencias/{id}',[AsistenciasController::class, 'destroy']);
-
 Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'getMetricas']);
-
-/*
-|--------------------------------------------------------------------------
-| MÓDULO LUDOTECA Y CHECK-IN
-|--------------------------------------------------------------------------
-*/
 
 Route::post('/ludoteca/ingreso', [LudotecaController::class, 'registrarIngreso']);
 Route::post('/ludoteca/salida', [LudotecaController::class, 'registrarSalida']);
@@ -149,7 +118,6 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
-
     Route::get('/socio/perfil', [SocioPortalController::class, 'perfil']);
     Route::get('/socio/reservas/disponibilidad', [SocioPortalController::class, 'disponibilidad']);
     Route::get('/socio/reservas', [SocioPortalController::class, 'reservas']);
