@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
 import {
   Users,
@@ -9,11 +10,17 @@ import {
   Link2,
   Filter,
   X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Ellipsis,
 } from "lucide-react";
 
 const API_DEPENDIENTES = "http://localhost:8000/api/dependientes";
 const API_TITULARES = "http://localhost:8000/api/titulares";
 const API_SOCIOS = "http://localhost:8000/api/socios";
+const ITEMS_PER_PAGE = 10;
 
 const initialForm = {
   nombre: "",
@@ -47,7 +54,19 @@ const Dependientes = () => {
   const [savingCreate, setSavingCreate] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [windowSize, setWindowSize] = useState(10);
+  const [activeMenu, setActiveMenu] = useState(null);
+  const [menuPos, setMenuPos] = useState(null);
+
   const titularFiltro = searchParams.get("titular");
+
+  useEffect(() => {
+    const check = () => setWindowSize(window.innerWidth < 768 ? 3 : 10);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const fetchDependientes = async () => {
     try {
@@ -111,6 +130,8 @@ const Dependientes = () => {
       );
     };
   }, [titularFiltro, titulares]);
+
+  useEffect(() => { setCurrentPage(1); }, [titularFiltro]);
 
   const titularesFamiliares = useMemo(() => {
     return titulares.filter(
@@ -332,6 +353,12 @@ const Dependientes = () => {
     );
   }, [dependientes, titularFiltro]);
 
+  const totalPages = Math.max(1, Math.ceil(dependientesFiltrados.length / ITEMS_PER_PAGE));
+  const paginatedDependientes = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return dependientesFiltrados.slice(start, start + ITEMS_PER_PAGE);
+  }, [dependientesFiltrados, currentPage]);
+
   const stats = useMemo(() => {
     const totalDependientes = dependientesFiltrados.length;
 
@@ -384,27 +411,66 @@ const Dependientes = () => {
     titularActual &&
     (titularActual.modalidad || "").toLowerCase() !== "familiar";
 
+  const Pagination = ({ current, total, onPageChange, count, winSize = 10 }) => {
+    if (total <= 1) return null;
+    const curWin = Math.ceil(current / winSize);
+    const startP = (curWin - 1) * winSize + 1;
+    const endP = Math.min(startP + winSize - 1, total);
+    return (
+      <div className="flex items-center justify-between px-4 md:px-5 py-3 border-t border-gray-800">
+        <p className="text-xs text-gray-500">{count} registros — Pág. {current} de {total}</p>
+        <div className="flex items-center gap-1">
+          <button onClick={() => onPageChange(Math.max(1, current - winSize))}
+            disabled={curWin === 1}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+            title="Anterior ventana">
+            <ChevronsLeft size={16} />
+          </button>
+          <button onClick={() => onPageChange(Math.max(1, current - 1))}
+            disabled={current === 1}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+            <ChevronLeft size={16} />
+          </button>
+          {Array.from({ length: endP - startP + 1 }, (_, i) => startP + i).map((page) => (
+            <button key={page} onClick={() => onPageChange(page)}
+              className={`w-7 h-7 rounded-lg text-xs font-medium transition ${
+                page === current
+                  ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/30"
+                  : "text-gray-500 hover:bg-gray-800 hover:text-white"
+              }`}>{page}</button>
+          ))}
+          <button onClick={() => onPageChange(Math.min(total, current + 1))}
+            disabled={current === total}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+            <ChevronRight size={16} />
+          </button>
+          <button onClick={() => onPageChange(Math.min(total, startP + winSize))}
+            disabled={endP === total}
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+            title="Siguiente ventana">
+            <ChevronsRight size={16} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-4 p-4 md:p-6">
       {titularFiltro && titularActual && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3">
           <div className="flex items-center gap-3 text-violet-300">
-            <Filter size={18} />
+            <Filter size={16} />
             <div>
               <p className="text-sm font-semibold">Filtro activo por titular</p>
-              <p className="text-sm text-violet-200">
-                {titularActual.nombre} {titularActual.apellidos} (ID:{" "}
-                {titularActual.id_socio})
+              <p className="text-xs text-violet-200">
+                {titularActual.nombre} {titularActual.apellidos} (ID: {titularActual.id_socio})
               </p>
             </div>
           </div>
-
-          <button
-            onClick={limpiarFiltroTitular}
-            className="inline-flex items-center gap-2 rounded-lg border border-violet-400/20 bg-[#14171c] px-3 py-2 text-sm font-medium text-violet-200 transition hover:bg-violet-500/10"
-          >
-            <X size={15} />
-            Ver todos
+          <button onClick={limpiarFiltroTitular}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-400/20 bg-[#14171c] px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-500/10">
+            <X size={14} /> Ver todos
           </button>
         </div>
       )}
@@ -422,215 +488,172 @@ const Dependientes = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-gray-800 bg-[#14171c] p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
-              <Users size={24} />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">
-                Total dependientes
-              </p>
-              <p className="mt-1 text-3xl font-bold text-white">
-                {stats.totalDependientes}
-              </p>
-            </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-blue-900/30 text-blue-400"><Users size={16} /></div>
+          <div className="min-w-0">
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Total</p>
+            <p className="text-lg md:text-xl font-bold">{stats.totalDependientes}</p>
           </div>
         </div>
-
-        <div className="rounded-2xl border border-gray-800 bg-[#14171c] p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/10 text-violet-400">
-              <Link2 size={24} />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">
-                Titulares únicos
-              </p>
-              <p className="mt-1 text-3xl font-bold text-white">
-                {stats.titularesUnicos}
-              </p>
-            </div>
+        <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-violet-900/30 text-violet-400"><Link2 size={16} /></div>
+          <div className="min-w-0">
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Titulares</p>
+            <p className="text-lg md:text-xl font-bold">{stats.titularesUnicos}</p>
           </div>
         </div>
-
-        <div className="rounded-2xl border border-gray-800 bg-[#14171c] p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-              <UserRound size={24} />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">
-                Vigentes
-              </p>
-              <p className="mt-1 text-3xl font-bold text-white">
-                {stats.vigentes}
-              </p>
-            </div>
+        <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-emerald-900/30 text-emerald-400"><UserRound size={16} /></div>
+          <div className="min-w-0">
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Vigentes</p>
+            <p className="text-lg md:text-xl font-bold">{stats.vigentes}</p>
           </div>
         </div>
-
-        <div className="rounded-2xl border border-gray-800 bg-[#14171c] p-5 shadow-sm">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
-              <Users size={24} />
-            </div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-gray-400">
-                Sin documento
-              </p>
-              <p className="mt-1 text-3xl font-bold text-white">
-                {stats.sinDocumento}
-              </p>
-            </div>
+        <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-amber-900/30 text-amber-400"><Users size={16} /></div>
+          <div className="min-w-0">
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Sin doc.</p>
+            <p className="text-lg md:text-xl font-bold">{stats.sinDocumento}</p>
           </div>
         </div>
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-gray-800 bg-[#14171c]">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-gray-800 px-6 py-5">
+      <div className="bg-[#14171c] rounded-xl border border-gray-800">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 md:p-5 border-b border-gray-800">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-white">
+            <h2 className="text-base md:text-lg font-bold text-white">
               {titularActual
                 ? `Dependientes de ${titularActual.nombre}`
                 : "Directorio de dependientes"}
             </h2>
           </div>
-
-          <button
-            onClick={cargarTodo}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-700 bg-[#1b2130] text-gray-300 transition hover:border-gray-600 hover:text-white"
-            title="Recargar dependientes"
-          >
-            <RefreshCcw size={18} />
+          <button onClick={cargarTodo}
+            className="p-1.5 rounded-lg border border-gray-700 bg-[#0f131a] text-gray-300 hover:border-gray-600 hover:text-white transition w-max"
+            title="Recargar dependientes">
+            <RefreshCcw size={16} />
           </button>
         </div>
 
         {loading ? (
-          <div className="px-6 py-16 text-center text-gray-400">
-            Cargando dependientes...
-          </div>
+          <div className="px-6 py-12 text-center text-gray-400 text-sm">Cargando dependientes...</div>
         ) : dependientesFiltrados.length === 0 ? (
-          <div className="px-6 py-16 text-center text-gray-500">
+          <div className="px-6 py-12 text-center text-gray-500 text-sm">
             {titularActual
               ? "Este titular no tiene dependientes registrados."
               : "No hay dependientes registrados."}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead className="bg-[#14171c]">
-                <tr className="border-b border-gray-800 text-left">
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    ID
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Nombre
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Apellidos
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Titular
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Membresía
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Modalidad
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Estatus
-                  </th>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                    Acciones
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-800">
-                {dependientesFiltrados.map((dep) => (
-                  <tr
-                    key={dep.id_socio}
-                    className="transition hover:bg-white/[0.02]"
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {dep.id_socio}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-white">
-                      {dep.nombre}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {dep.apellidos}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {getNombreTitular(dep.id_titular_fk)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {dep.tipo_membresia || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-300">
-                      {dep.modalidad || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-sm">
-                      <span
-                        className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadge(
-                          dep.estatus_financiero
-                        )}`}
-                      >
-                        {dep.estatus_financiero || "Sin estatus"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => openEditModal(dep)}
-                          className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-300 transition hover:bg-blue-500/20"
-                        >
-                          <Pencil size={15} />
-                          Editar
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            handleEliminarDependiente(dep.id_socio, dep.nombre)
-                          }
-                          className="inline-flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/20"
-                        >
-                          <Trash2 size={15} />
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
+                    <th className="px-4 py-3 font-medium">ID</th>
+                    <th className="px-4 py-3 font-medium">Nombre</th>
+                    <th className="px-4 py-3 font-medium">Apellidos</th>
+                    <th className="px-4 py-3 font-medium">Titular</th>
+                    <th className="px-4 py-3 font-medium">Estatus</th>
+                    <th className="px-4 py-3 font-medium text-center">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {paginatedDependientes.map((dep, idx) => (
+                    <tr key={dep.id_socio} className={`transition-colors ${idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"} hover:bg-gray-800/30`}>
+                      <td className="px-4 py-3 text-sm text-gray-300">{dep.id_socio}</td>
+                      <td className="px-4 py-3 text-sm font-semibold text-white">{dep.nombre}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400">{dep.apellidos}</td>
+                      <td className="px-4 py-3 text-sm text-gray-400">{getNombreTitular(dep.id_titular_fk)}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(dep.estatus_financiero)}`}>
+                          {dep.estatus_financiero || "Sin estatus"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMenuPos({ top: rect.bottom + 8, left: rect.right - 192 });
+                            setActiveMenu(activeMenu === dep.id_socio ? null : dep.id_socio);
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition mx-auto block">
+                          <Ellipsis size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="md:hidden divide-y divide-gray-800">
+              {paginatedDependientes.map((dep) => (
+                <div key={dep.id_socio} className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-semibold text-sm text-white">{dep.nombre} {dep.apellidos}</h3>
+                      <p className="text-xs text-gray-500">ID: {dep.id_socio}</p>
+                    </div>
+                    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(dep.estatus_financiero)}`}>
+                      {dep.estatus_financiero || "Sin estatus"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">Titular: {getNombreTitular(dep.id_titular_fk)}</p>
+                  <div className="flex justify-end">
+                    <button onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 192) });
+                        setActiveMenu(activeMenu === dep.id_socio ? null : dep.id_socio);
+                      }}
+                      className="p-1.5 text-gray-400 hover:bg-gray-800 rounded-full transition">
+                      <Ellipsis size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <Pagination current={currentPage} total={totalPages} onPageChange={setCurrentPage} count={dependientesFiltrados.length} winSize={windowSize} />
+          </>
         )}
-      </section>
+      </div>
+
+      {activeMenu && menuPos && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => { setActiveMenu(null); setMenuPos(null); }}></div>
+          <div className="fixed z-50 w-48 rounded-xl border border-gray-700 bg-[#1b2130] shadow-xl outline-none"
+            style={{ top: menuPos.top, left: menuPos.left }}>
+            <div className="py-1.5">
+              {(() => {
+                const dep = dependientesFiltrados.find(d => d.id_socio === activeMenu);
+                if (!dep) return null;
+                return (
+                  <>
+                    <button onClick={() => { openEditModal(dep); setActiveMenu(null); setMenuPos(null); }}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
+                      <Pencil size={15} className="mr-3 text-amber-400" /> Editar
+                    </button>
+                    <button onClick={() => { handleEliminarDependiente(dep.id_socio, dep.nombre); setActiveMenu(null); setMenuPos(null); }}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
+                      <Trash2 size={15} className="mr-3 text-red-400" /> Eliminar
+                    </button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 bg-[#14171c] p-6 shadow-2xl">
-            <h2 className="mb-6 text-2xl font-bold text-white">
-              Registrar dependiente
-            </h2>
+            <h2 className="mb-6 text-2xl font-bold text-white">Registrar dependiente</h2>
 
-            <form
-              onSubmit={handleCreateDependiente}
-              className="grid grid-cols-1 gap-4 md:grid-cols-2"
-            >
+            <form onSubmit={handleCreateDependiente} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className={labelClass}>Titular</label>
-                <select
-                  name="id_titular_fk"
-                  value={createFormData.id_titular_fk}
-                  onChange={handleCreateChange}
-                  className={fieldBaseClass}
-                  required
-                >
+                <select name="id_titular_fk" value={createFormData.id_titular_fk} onChange={handleCreateChange} className={fieldBaseClass} required>
                   <option value="">Selecciona un titular</option>
                   {titularesFamiliares.map((titular) => (
                     <option key={titular.id_socio} value={titular.id_socio}>
@@ -642,49 +665,22 @@ const Dependientes = () => {
 
               <div>
                 <label className={labelClass}>Nombre</label>
-                <input
-                  type="text"
-                  name="nombre"
-                  value={createFormData.nombre}
-                  onChange={handleCreateChange}
-                  className={fieldBaseClass}
-                  required
-                />
+                <input type="text" name="nombre" value={createFormData.nombre} onChange={handleCreateChange} className={fieldBaseClass} required />
               </div>
 
               <div>
                 <label className={labelClass}>Apellidos</label>
-                <input
-                  type="text"
-                  name="apellidos"
-                  value={createFormData.apellidos}
-                  onChange={handleCreateChange}
-                  className={fieldBaseClass}
-                  required
-                />
+                <input type="text" name="apellidos" value={createFormData.apellidos} onChange={handleCreateChange} className={fieldBaseClass} required />
               </div>
 
               <div>
                 <label className={labelClass}>Fecha de nacimiento</label>
-                <input
-                  type="date"
-                  name="fecha_nacimiento"
-                  value={createFormData.fecha_nacimiento}
-                  onChange={handleCreateChange}
-                  className={fieldBaseClass}
-                  required
-                />
+                <input type="date" name="fecha_nacimiento" value={createFormData.fecha_nacimiento} onChange={handleCreateChange} className={fieldBaseClass} required />
               </div>
 
               <div>
                 <label className={labelClass}>Género</label>
-                <select
-                  name="genero"
-                  value={createFormData.genero}
-                  onChange={handleCreateChange}
-                  className={fieldBaseClass}
-                  required
-                >
+                <select name="genero" value={createFormData.genero} onChange={handleCreateChange} className={fieldBaseClass} required>
                   <option value="">Selecciona una opción</option>
                   <option value="Masculino">Masculino</option>
                   <option value="Femenino">Femenino</option>
@@ -695,29 +691,16 @@ const Dependientes = () => {
 
               <div className="md:col-span-2">
                 <label className={labelClass}>Número de documento</label>
-                <input
-                  type="text"
-                  name="numero_documento"
-                  value={createFormData.numero_documento}
-                  onChange={handleCreateChange}
-                  className={fieldBaseClass}
-                />
+                <input type="text" name="numero_documento" value={createFormData.numero_documento} onChange={handleCreateChange} className={fieldBaseClass} />
               </div>
 
               <div className="mt-4 flex justify-end gap-3 md:col-span-2">
-                <button
-                  type="button"
-                  onClick={closeCreateModal}
-                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white"
-                >
+                <button type="button" onClick={closeCreateModal}
+                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white">
                   Cancelar
                 </button>
-
-                <button
-                  type="submit"
-                  disabled={savingCreate || titularesFamiliares.length === 0}
-                  className="rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-black transition hover:bg-yellow-300 disabled:opacity-60"
-                >
+                <button type="submit" disabled={savingCreate || titularesFamiliares.length === 0}
+                  className="rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-black transition hover:bg-yellow-300 disabled:opacity-60">
                   {savingCreate ? "Guardando..." : "Registrar dependiente"}
                 </button>
               </div>
@@ -729,23 +712,12 @@ const Dependientes = () => {
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 bg-[#14171c] p-6 shadow-2xl">
-            <h2 className="mb-6 text-2xl font-bold text-white">
-              Editar dependiente
-            </h2>
+            <h2 className="mb-6 text-2xl font-bold text-white">Editar dependiente</h2>
 
-            <form
-              onSubmit={handleUpdateDependiente}
-              className="grid grid-cols-1 gap-4 md:grid-cols-2"
-            >
+            <form onSubmit={handleUpdateDependiente} className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <label className={labelClass}>Titular</label>
-                <select
-                  name="id_titular_fk"
-                  value={editFormData.id_titular_fk}
-                  onChange={handleEditChange}
-                  className={fieldBaseClass}
-                  required
-                >
+                <select name="id_titular_fk" value={editFormData.id_titular_fk} onChange={handleEditChange} className={fieldBaseClass} required>
                   <option value="">Selecciona un titular</option>
                   {titularesFamiliares.map((titular) => (
                     <option key={titular.id_socio} value={titular.id_socio}>
@@ -757,49 +729,22 @@ const Dependientes = () => {
 
               <div>
                 <label className={labelClass}>Nombre</label>
-                <input
-                  type="text"
-                  name="nombre"
-                  value={editFormData.nombre}
-                  onChange={handleEditChange}
-                  className={fieldBaseClass}
-                  required
-                />
+                <input type="text" name="nombre" value={editFormData.nombre} onChange={handleEditChange} className={fieldBaseClass} required />
               </div>
 
               <div>
                 <label className={labelClass}>Apellidos</label>
-                <input
-                  type="text"
-                  name="apellidos"
-                  value={editFormData.apellidos}
-                  onChange={handleEditChange}
-                  className={fieldBaseClass}
-                  required
-                />
+                <input type="text" name="apellidos" value={editFormData.apellidos} onChange={handleEditChange} className={fieldBaseClass} required />
               </div>
 
               <div>
                 <label className={labelClass}>Fecha de nacimiento</label>
-                <input
-                  type="date"
-                  name="fecha_nacimiento"
-                  value={editFormData.fecha_nacimiento}
-                  onChange={handleEditChange}
-                  className={fieldBaseClass}
-                  required
-                />
+                <input type="date" name="fecha_nacimiento" value={editFormData.fecha_nacimiento} onChange={handleEditChange} className={fieldBaseClass} required />
               </div>
 
               <div>
                 <label className={labelClass}>Género</label>
-                <select
-                  name="genero"
-                  value={editFormData.genero}
-                  onChange={handleEditChange}
-                  className={fieldBaseClass}
-                  required
-                >
+                <select name="genero" value={editFormData.genero} onChange={handleEditChange} className={fieldBaseClass} required>
                   <option value="">Selecciona una opción</option>
                   <option value="Masculino">Masculino</option>
                   <option value="Femenino">Femenino</option>
@@ -810,29 +755,16 @@ const Dependientes = () => {
 
               <div className="md:col-span-2">
                 <label className={labelClass}>Número de documento</label>
-                <input
-                  type="text"
-                  name="numero_documento"
-                  value={editFormData.numero_documento}
-                  onChange={handleEditChange}
-                  className={fieldBaseClass}
-                />
+                <input type="text" name="numero_documento" value={editFormData.numero_documento} onChange={handleEditChange} className={fieldBaseClass} />
               </div>
 
               <div className="mt-4 flex justify-end gap-3 md:col-span-2">
-                <button
-                  type="button"
-                  onClick={closeEditModal}
-                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white"
-                >
+                <button type="button" onClick={closeEditModal}
+                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white">
                   Cancelar
                 </button>
-
-                <button
-                  type="submit"
-                  disabled={savingEdit || titularesFamiliares.length === 0}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
-                >
+                <button type="submit" disabled={savingEdit || titularesFamiliares.length === 0}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60">
                   {savingEdit ? "Guardando..." : "Guardar cambios"}
                 </button>
               </div>
