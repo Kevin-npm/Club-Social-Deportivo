@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LudotecaController;
+use App\Http\Controllers\Api\CheckinController;
 use App\Http\Controllers\Api\SocioController;
 use App\Http\Controllers\Api\InstructorController;
 use App\Http\Controllers\Api\InstalacionesController;
@@ -12,7 +13,6 @@ use App\Http\Controllers\Api\AgendaController;
 use App\Http\Controllers\Api\ReservasController;
 use App\Http\Controllers\Api\SocioImportController;
 use App\Http\Controllers\Api\AsistenciasController;
-use App\Http\Controllers\Api\CheckinController;
 use App\Http\Controllers\Api\PagosController;
 use App\Http\Controllers\Api\InstructorDashboardController;
 use App\Http\Controllers\Api\ConfirmPasswordController;
@@ -111,7 +111,8 @@ Route::middleware(['restrict.instructor'])->group(function () {
 
     Route::get('/reservas', [ReservasController::class, 'index']);
     Route::get('/reservas/{id}', [ReservasController::class, 'show']);
-    Route::post('/reservas', [ReservasController::class, 'store'])->middleware('bloquear.sancionado');
+    Route::post('/reservas', [ReservasController::class, 'store'])
+        ->middleware('bloquear.sancionado');
     Route::put('/reservas/{id}', [ReservasController::class, 'update']);
     Route::delete('/reservas/{id}', [ReservasController::class, 'destroy']);
 

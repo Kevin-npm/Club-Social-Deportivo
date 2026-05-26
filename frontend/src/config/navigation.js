@@ -7,25 +7,30 @@ import {
   CalendarDays,
   Trophy,
   BellRing,
-  BellPlus,
-  Banknote,
   Activity,
   Upload,
+  Puzzle,
 } from "lucide-react";
 
 // Fuente central de navegación
 export const MenuItems = [
   {
-    title: "Dashboard Ludoteca",
+    title: "Dashboard",
     icon: LayoutDashboard,
     path: "/dashboard",
-    roles: ["admin", "instructor"],
+    roles: ["admin"],
+  },
+  {
+    title: "Ludoteca",
+    icon: Puzzle,
+    path: "/ludoteca",
+    roles: ["admin"],
   },
   {
     title: "Mi Rendimiento",
     icon: Activity,
     path: "/dashboard-instructor",
-    roles: ["instructor", "admin"], 
+    roles: ["instructor"],
   },
   {
     title: "Instalaciones",
@@ -88,16 +93,4 @@ export const MenuItems = [
     path: "/torneos",
     roles: ["admin", "instructor"],
   },
-  // {
-  //   title: "Check-in",
-  //   icon: BellPlus,
-  //   path: "/check-in",
-  //   roles: ["admin"],
-  // },
-  // // {
-  //   title: "Pagos",
-  //   icon: Banknote,
-  //   path: "/pagos",
-  //   roles: ["admin"],
-  // },
 ];
