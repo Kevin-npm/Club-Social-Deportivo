@@ -4,7 +4,7 @@ import { Bell, Check, Menu, Repeat } from "lucide-react";
 import { headerActions } from "../config/header_actions";
 import { useRoleSimulator } from "../context/RoleSimulatorContext";
 
-const SOCIO_ID_SIMULADO = 2;
+const SOCIO_ID_SIMULADO = 5;
 
 const TopHeader = ({ onMenuToggle }) => {
   const location = useLocation();
@@ -117,17 +117,17 @@ const TopHeader = ({ onMenuToggle }) => {
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-3 w-96 bg-[#1c1f26] border border-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden">
+            <div className="absolute right-0 mt-3 w-72 sm:w-96 max-w-[calc(100vw-1rem)] bg-[#1c1f26] border border-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-bold text-white">
                     Notificaciones
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 truncate">
                     Socio simulado #{SOCIO_ID_SIMULADO}
                   </p>
                 </div>
-                <span className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded-full font-bold">
+                <span className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded-full font-bold shrink-0">
                   {noLeidas} nuevas
                 </span>
               </div>
@@ -147,9 +147,9 @@ const TopHeader = ({ onMenuToggle }) => {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p
-                            className={`text-sm ${
+                            className={`text-sm leading-snug ${
                               !n.leido_boolean
                                 ? "font-bold text-white"
                                 : "font-medium text-gray-400"
@@ -157,7 +157,7 @@ const TopHeader = ({ onMenuToggle }) => {
                           >
                             {n.titulo}
                           </p>
-                          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                          <p className="text-xs text-gray-500 mt-1 leading-snug break-words">
                             {n.mensaje}
                           </p>
                           <p className="text-[11px] text-gray-600 mt-2">
@@ -172,7 +172,7 @@ const TopHeader = ({ onMenuToggle }) => {
                         )}
 
                         {n.leido_boolean && (
-                          <Check size={15} className="text-green-400 shrink-0" />
+                          <Check size={15} className="text-green-400 shrink-0 mt-0.5" />
                         )}
                       </div>
                     </button>
