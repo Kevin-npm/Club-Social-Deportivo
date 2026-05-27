@@ -1,13 +1,14 @@
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { User, CalendarDays, CreditCard, Bell, LogOut, Menu, X, Shield } from "lucide-react";
+import { User, CalendarDays, CreditCard, Bell, LogOut, Menu, X, Shield, QrCode } from "lucide-react";
 import { useState } from "react";
 
 const navLinks = [
-  { to: "/socio",              label: "Mi Perfil",       icon: User },
-  { to: "/socio/reservas",     label: "Reservas",        icon: CalendarDays },
-  { to: "/socio/pagos",        label: "Mis Pagos",       icon: CreditCard },
-  { to: "/socio/notificaciones", label: "Notificaciones", icon: Bell },
+  { to: "/socio",                label: "Mi Perfil",       icon: User },
+  { to: "/socio/asistencia",     label: "Asistencia QR",   icon: QrCode },
+  { to: "/socio/reservas",       label: "Reservas",        icon: CalendarDays },
+  { to: "/socio/pagos",          label: "Mis Pagos",       icon: CreditCard },
+  { to: "/socio/notificaciones", label: "Notificaciones",  icon: Bell },
 ];
 
 export default function SocioLayout() {
