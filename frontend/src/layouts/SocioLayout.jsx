@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
+
 import {
   User,
   CalendarDays,
@@ -9,11 +10,14 @@ import {
   Menu,
   X,
   Shield,
+  QrCode,
 } from "lucide-react";
+
 import { useAuth } from "../context/AuthContext";
 
 const navLinks = [
   { to: "/socio", label: "Mi Perfil", icon: User },
+  { to: "/socio/asistencia", label: "Asistencia QR", icon: QrCode },
   { to: "/socio/reservas", label: "Reservas", icon: CalendarDays },
   { to: "/socio/pagos", label: "Mis Pagos", icon: CreditCard },
   { to: "/socio/notificaciones", label: "Notificaciones", icon: Bell },
@@ -22,7 +26,9 @@ const navLinks = [
 export default function SocioLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const { user, logout } = useAuth();
+
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -47,6 +53,7 @@ export default function SocioLayout() {
             <p className="text-sm font-bold text-white leading-none">
               Club Social
             </p>
+
             <p className="text-xs text-gray-500 truncate max-w-[200px] sm:max-w-xs">
               {user?.email}
             </p>

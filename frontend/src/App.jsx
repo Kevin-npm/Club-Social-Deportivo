@@ -26,15 +26,15 @@ import Torneos from "./pages/Torneos";
 import CalendarioInstructor from "./pages/CalendarioInstructor";
 import SocioImport from "./pages/admin/SocioImport";
 
+import MiCuenta from "./pages/MiCuenta";
+import Configuracion from "./pages/Configuracion";
+import Ludoteca from "./pages/Ludoteca";
+
 import SocioHome from "./pages/socio/SocioHome";
 import SocioReservas from "./pages/socio/SocioReservas";
 import SocioPagos from "./pages/socio/SocioPagos";
 import SocioNotificaciones from "./pages/socio/SocioNotificaciones";
-
-import MiCuenta from "./pages/MiCuenta";
-import Configuracion from "./pages/Configuracion";
-
-import Ludoteca from "./pages/Ludoteca";
+import SocioAsistencia from "./pages/socio/SocioAsistencia";
 
 function App() {
   return (
@@ -60,58 +60,54 @@ function App() {
             <Route index element={<SocioHome />} />
             <Route path="reservas" element={<SocioReservas />} />
             <Route path="pagos" element={<SocioPagos />} />
+            <Route path="asistencia" element={<SocioAsistencia />} />
             <Route path="notificaciones" element={<SocioNotificaciones />} />
           </Route>
 
           {/* Panel administrativo */}
-<Route
-  element={
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <MainLayout />
-    </ProtectedRoute>
-  }
->
-  <Route path="/dashboard" element={<Dashboard />} />
-  <Route path="/ludoteca" element={<Ludoteca />} />
-  <Route path="/instalaciones" element={<Instalaciones />} />
-  <Route path="/recepcion" element={<Recepcion />} />
-  <Route path="/socios" element={<Socios />} />
-  <Route path="/dependientes" element={<Dependientes />} />
-  <Route path="/instructores" element={<Instructores />} />
-  <Route path="/torneos" element={<Torneos />} />
-  <Route path="/check-in" element={<CheckIn />} />
-  <Route path="/actividades" element={<Actividades />} />
-  <Route path="/sesiones" element={<Sesiones />} />
-  <Route path="/pagos" element={<Pagos />} />
-  <Route path="/socios/importar" element={<SocioImport />} />
-
-  {/* NUEVAS */}
-  <Route path="/mi-cuenta" element={<MiCuenta />} />
-  <Route path="/configuracion" element={<Configuracion />} />
-</Route>
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/ludoteca" element={<Ludoteca />} />
+            <Route path="/instalaciones" element={<Instalaciones />} />
+            <Route path="/recepcion" element={<Recepcion />} />
+            <Route path="/socios" element={<Socios />} />
+            <Route path="/dependientes" element={<Dependientes />} />
+            <Route path="/instructores" element={<Instructores />} />
+            <Route path="/torneos" element={<Torneos />} />
+            <Route path="/check-in" element={<CheckIn />} />
+            <Route path="/actividades" element={<Actividades />} />
+            <Route path="/sesiones" element={<Sesiones />} />
+            <Route path="/pagos" element={<Pagos />} />
+            <Route path="/socios/importar" element={<SocioImport />} />
+            <Route path="/mi-cuenta" element={<MiCuenta />} />
+            <Route path="/configuracion" element={<Configuracion />} />
+          </Route>
 
           {/* Panel exclusivo para instructor */}
-<Route
-  element={
-    <ProtectedRoute allowedRoles={["instructor"]}>
-      <MainLayout />
-    </ProtectedRoute>
-  }
->
-  <Route
-    path="/dashboard-instructor"
-    element={<DashboardInstructor />}
-  />
-
-  <Route
-    path="/calendario-instructor"
-    element={<CalendarioInstructor />}
-  />
-
-  {/* NUEVAS */}
-  <Route path="/mi-cuenta" element={<MiCuenta />} />
-  <Route path="/configuracion" element={<Configuracion />} />
-</Route>
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={["instructor"]}>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route
+              path="/dashboard-instructor"
+              element={<DashboardInstructor />}
+            />
+            <Route
+              path="/calendario-instructor"
+              element={<CalendarioInstructor />}
+            />
+            <Route path="/mi-cuenta" element={<MiCuenta />} />
+            <Route path="/configuracion" element={<Configuracion />} />
+          </Route>
 
           {/* Cualquier ruta inválida */}
           <Route path="*" element={<Navigate to="/" replace />} />
