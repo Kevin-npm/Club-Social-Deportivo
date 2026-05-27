@@ -427,8 +427,7 @@ const Torneos = () => {
           );
 
           equipos.sort(
-            (a, b) =>
-              b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc)
+            (a, b) => b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc)
           );
 
           if (equipos[0]) clasificados.push(equipos[0].nom);
@@ -863,8 +862,8 @@ const Torneos = () => {
       )}
 
       {modalLlaves && (
-        <div className="fixed inset-0 bg-black/95 flex items-center justify-center p-0 sm:p-4 z-[40] backdrop-blur-sm">
-          <div className="bg-[#11141a] border border-gray-800 w-full h-full sm:h-[94vh] sm:max-w-7xl flex flex-col rounded-none sm:rounded-[28px] shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 lg:left-[248px] bg-black/95 flex items-center justify-center p-0 sm:p-4 z-[40] backdrop-blur-sm">
+          <div className="bg-[#11141a] border border-gray-800 w-full h-full sm:h-[94vh] lg:max-w-[calc(100vw-280px)] xl:max-w-7xl flex flex-col rounded-none sm:rounded-[28px] shadow-2xl overflow-hidden">
             <div className="px-4 py-3 sm:p-4 border-b border-gray-800 bg-[#090b0f] flex items-center justify-between gap-3 shrink-0">
               <div className="flex gap-2 sm:gap-4 w-full overflow-x-auto pr-2">
                 <button
@@ -898,10 +897,10 @@ const Torneos = () => {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto lg:overflow-hidden">
+            <div className="flex-1 overflow-y-auto xl:overflow-hidden">
               {pestanaActiva === "grupos" && (
-                <div className="min-h-full lg:h-full grid grid-cols-1 lg:grid-cols-[360px_1fr]">
-                  <div className="bg-[#0a0c10] border-b lg:border-b-0 lg:border-r border-gray-800 p-4 sm:p-5 lg:overflow-y-auto">
+                <div className="min-h-full xl:h-full grid grid-cols-1 xl:grid-cols-[340px_1fr]">
+                  <div className="bg-[#0a0c10] border-b xl:border-b-0 xl:border-r border-gray-800 p-4 sm:p-5 xl:overflow-y-auto">
                     <h3 className="font-black text-white text-[18px] sm:text-xl mb-4 flex items-center gap-2">
                       <LayoutGrid className="text-yellow-400" />
                       Clasificación
@@ -915,8 +914,7 @@ const Torneos = () => {
                         }))
                         .sort(
                           (a, b) =>
-                            b.pts - a.pts ||
-                            b.gf - b.gc - (a.gf - a.gc)
+                            b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc)
                         );
 
                       return (
@@ -983,7 +981,7 @@ const Torneos = () => {
                     )}
                   </div>
 
-                  <div className="p-4 sm:p-6 bg-[#13161c] lg:overflow-y-auto">
+                  <div className="p-4 sm:p-6 bg-[#13161c] xl:overflow-y-auto">
                     {[1, 2, 3].map((jor) => (
                       <div key={jor} className="mb-8 sm:mb-12">
                         <h3 className="font-black text-lg sm:text-2xl text-gray-500 mb-4 border-b border-gray-800 pb-2">
