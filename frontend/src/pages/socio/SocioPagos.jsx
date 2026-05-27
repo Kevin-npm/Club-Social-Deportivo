@@ -12,11 +12,12 @@ export default function SocioPagos() {
   const [detalleLoading, setDetalleLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const formatCurrency = (value) =>
-    Number(value || 0).toLocaleString("es-MX", {
+  const formatCurrency = (value) => {
+    return Number(value || 0).toLocaleString("es-MX", {
       style: "currency",
       currency: "MXN",
     });
+  };
 
   const formatDate = (dateValue) => {
     if (!dateValue) return "No registrada";
@@ -49,13 +50,12 @@ export default function SocioPagos() {
       const pagosData = data.data || [];
       setPagos(pagosData);
 
-      const total = pagosData.reduce(
-        (sum, pago) => sum + Number(pago.monto || 0),
-        0
-      );
+      const total = pagosData.reduce((sum, pago) => {
+        return sum + Number(pago.monto || 0);
+      }, 0);
 
       setTotalPagado(total);
-    } catch {
+    } catch (error) {
       setError("No se pudo conectar con el servidor.");
     } finally {
       setLoading(false);
@@ -82,7 +82,7 @@ export default function SocioPagos() {
       }
 
       setPagoDetalle(data.data);
-    } catch {
+    } catch (error) {
       setError("No se pudo conectar con el servidor.");
     } finally {
       setDetalleLoading(false);
@@ -103,31 +103,26 @@ export default function SocioPagos() {
 
   return (
     <section>
-      <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-        Mis pagos
-      </h2>
-
-      <p className="text-sm sm:text-base text-slate-500">
+      <h2 className="text-2xl font-bold text-slate-900 mb-2">Mis pagos</h2>
+      <p className="text-slate-500">
         Consulta tus pagos registrados y comprobantes digitales.
       </p>
 
       {error && (
-        <div className="mt-4 bg-red-100 text-red-700 rounded-lg px-4 py-3 text-sm">
+        <div className="mt-4 bg-red-100 text-red-700 rounded-lg px-4 py-3">
           {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-        <div className="bg-white rounded-2xl shadow p-5 sm:p-6">
+      <div className="grid md:grid-cols-2 gap-4 mt-6">
+        <div className="bg-white rounded-2xl shadow p-6">
           <p className="text-sm text-slate-500">Pagos registrados</p>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900">
-            {pagos.length}
-          </p>
+          <p className="text-3xl font-bold text-slate-900">{pagos.length}</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-5 sm:p-6">
+        <div className="bg-white rounded-2xl shadow p-6">
           <p className="text-sm text-slate-500">Total pagado</p>
-          <p className="text-2xl sm:text-3xl font-bold text-slate-900">
+          <p className="text-3xl font-bold text-slate-900">
             {formatCurrency(totalPagado)}
           </p>
         </div>
@@ -137,61 +132,55 @@ export default function SocioPagos() {
         {pagos.length === 0 ? (
           <div className="p-6 text-slate-600">No tienes pagos registrados.</div>
         ) : (
-          <div className="w-full overflow-x-auto">
-            <table className="min-w-[760px] w-full text-left">
-              <thead className="bg-slate-100 text-slate-700">
-                <tr>
-                  <th className="p-4">Folio</th>
-                  <th className="p-4">Concepto</th>
-                  <th className="p-4">Método</th>
-                  <th className="p-4">Monto</th>
-                  <th className="p-4">Fecha</th>
-                  <th className="p-4">Acciones</th>
-                </tr>
-              </thead>
+          <table className="w-full text-left">
+            <thead className="bg-slate-100 text-slate-700">
+              <tr>
+                <th className="p-4">Folio</th>
+                <th className="p-4">Concepto</th>
+                <th className="p-4">Método</th>
+                <th className="p-4">Monto</th>
+                <th className="p-4">Fecha</th>
+                <th className="p-4">Acciones</th>
+              </tr>
+            </thead>
 
-              <tbody>
-                {pagos.map((pago) => (
-                  <tr key={pago.id_pago} className="border-t">
-                    <td className="p-4 font-medium whitespace-nowrap">
-                      {pago.folio_digital || "Sin folio"}
-                    </td>
-                    <td className="p-4">{pago.concepto}</td>
-                    <td className="p-4 whitespace-nowrap">
-                      {pago.metodo?.nombre_metodo || `Método #${pago.id_metodo}`}
-                    </td>
-                    <td className="p-4 whitespace-nowrap">
-                      {formatCurrency(pago.monto)}
-                    </td>
-                    <td className="p-4 whitespace-nowrap">
-                      {formatDate(pago.fecha_pago)}
-                    </td>
-                    <td className="p-4">
-                      <button
-                        onClick={() => verDetalle(pago.id_pago)}
-                        disabled={detalleLoading}
-                        className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg px-4 py-2 text-sm whitespace-nowrap"
-                      >
-                        Ver detalle
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            <tbody>
+              {pagos.map((pago) => (
+                <tr key={pago.id_pago} className="border-t">
+                  <td className="p-4 font-medium">
+                    {pago.folio_digital || "Sin folio"}
+                  </td>
+                  <td className="p-4">{pago.concepto}</td>
+                  <td className="p-4">
+                    {pago.metodo?.nombre_metodo || `Método #${pago.id_metodo}`}
+                  </td>
+                  <td className="p-4">{formatCurrency(pago.monto)}</td>
+                  <td className="p-4">{formatDate(pago.fecha_pago)}</td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => verDetalle(pago.id_pago)}
+                      disabled={detalleLoading}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg px-4 py-2 text-sm"
+                    >
+                      Ver detalle
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
 
       {pagoDetalle && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-6">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-5 sm:p-6 print:shadow-none print:max-h-none print:overflow-visible">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 print:shadow-none">
             <div className="flex justify-between items-start gap-4 mb-6 print:hidden">
-              <div className="min-w-0">
-                <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">
                   Comprobante de pago
                 </h3>
-                <p className="text-sm text-slate-500 break-all">
+                <p className="text-slate-500">
                   Folio: {pagoDetalle.folio_digital || "Sin folio"}
                 </p>
               </div>
@@ -209,7 +198,7 @@ export default function SocioPagos() {
               <p>Comprobante de pago</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               <InfoItem label="Folio digital" value={pagoDetalle.folio_digital} />
               <InfoItem label="Concepto" value={pagoDetalle.concepto} />
               <InfoItem
@@ -221,23 +210,20 @@ export default function SocioPagos() {
               />
               <InfoItem label="Monto" value={formatCurrency(pagoDetalle.monto)} />
               <InfoItem label="Referencia" value={pagoDetalle.referencia} />
-              <InfoItem
-                label="Fecha de pago"
-                value={formatDate(pagoDetalle.fecha_pago)}
-              />
+              <InfoItem label="Fecha de pago" value={formatDate(pagoDetalle.fecha_pago)} />
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-3 mt-6 print:hidden">
+            <div className="flex justify-end gap-3 mt-6 print:hidden">
               <button
                 onClick={() => setPagoDetalle(null)}
-                className="w-full sm:w-auto border border-slate-300 text-slate-700 rounded-lg px-4 py-2"
+                className="border border-slate-300 text-slate-700 rounded-lg px-4 py-2"
               >
                 Cerrar
               </button>
 
               <button
                 onClick={imprimirComprobante}
-                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2"
+                className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2"
               >
                 Imprimir / Guardar PDF
               </button>
@@ -253,7 +239,7 @@ function InfoItem({ label, value }) {
   return (
     <div className="border border-slate-200 rounded-xl p-4">
       <p className="text-sm text-slate-500">{label}</p>
-      <p className="font-semibold text-slate-900 break-words">
+      <p className="font-semibold text-slate-900">
         {value || "No registrado"}
       </p>
     </div>
