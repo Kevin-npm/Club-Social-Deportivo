@@ -17,9 +17,23 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useRoleSimulator } from "../context/RoleSimulatorContext";
+import API_BASE_URL from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
 const Torneos = () => {
   const { isAdmin } = useRoleSimulator();
+  const { token } = useAuth();
+
+  const authHeaders = {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  const jsonAuthHeaders = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  };
 
   const [torneos, setTorneos] = useState([]);
   const [instalaciones, setInstalaciones] = useState([]);
@@ -96,14 +110,18 @@ const Torneos = () => {
     setCargando(true);
 
     try {
-      const resInst = await fetch("http://127.0.0.1:8000/api/instalaciones");
+      const resInst = await fetch(`${API_BASE_URL}/instalaciones`, {
+        headers: authHeaders,
+      });
 
       if (resInst.ok) {
         const dataInst = await resInst.json();
         setInstalaciones(dataInst.data || []);
       }
 
-      const resTorneos = await fetch("http://127.0.0.1:8000/api/torneos");
+      const resTorneos = await fetch(`${API_BASE_URL}/torneos`, {
+        headers: authHeaders,
+      });
 
       if (resTorneos.ok) {
         const dataTorneos = await resTorneos.json();
@@ -117,8 +135,10 @@ const Torneos = () => {
   };
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    if (token) {
+      cargarDatos();
+    }
+  }, [token]);
 
   const abrirParaEditar = (t) => {
     setFormData(t);
@@ -134,15 +154,13 @@ const Torneos = () => {
     const method = modoEdicion ? "PUT" : "POST";
 
     const url = modoEdicion
-      ? `http://127.0.0.1:8000/api/torneos/${formData.id_torneo || formData.id}`
-      : "http://127.0.0.1:8000/api/torneos";
+      ? `${API_BASE_URL}/torneos/${formData.id_torneo || formData.id}`
+      : `${API_BASE_URL}/torneos`;
 
     try {
       const res = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: jsonAuthHeaders,
         body: JSON.stringify(formData),
       });
 
@@ -163,8 +181,9 @@ const Torneos = () => {
     pedirConfirmacion(
       "¿Estás seguro de eliminar todo este torneo y sus registros?",
       async () => {
-        await fetch(`http://127.0.0.1:8000/api/torneos/${id}`, {
+        await fetch(`${API_BASE_URL}/torneos/${id}`, {
           method: "DELETE",
+          headers: authHeaders,
         });
 
         mostrarAlerta("Torneo eliminado", "success");
@@ -181,9 +200,9 @@ const Torneos = () => {
   };
 
   const recargarInscritos = async (id) => {
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/torneos/${id}/inscripciones`
-    );
+    const res = await fetch(`${API_BASE_URL}/torneos/${id}/inscripciones`, {
+      headers: authHeaders,
+    });
     const data = await res.json();
     setInscritosLista(data.data || []);
   };
@@ -194,17 +213,15 @@ const Torneos = () => {
     if (!equipoAInscribir) return;
 
     const url = editandoInscritoId
-      ? `http://127.0.0.1:8000/api/inscripciones/${editandoInscritoId}`
-      : `http://127.0.0.1:8000/api/torneos/${torneoActivoId}/inscribir`;
+      ? `${API_BASE_URL}/inscripciones/${editandoInscritoId}`
+      : `${API_BASE_URL}/torneos/${torneoActivoId}/inscribir`;
 
     const method = editandoInscritoId ? "PUT" : "POST";
 
     try {
       const res = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: jsonAuthHeaders,
         body: JSON.stringify({
           nombre_equipo: equipoAInscribir,
         }),
@@ -231,8 +248,9 @@ const Torneos = () => {
 
   const eliminarInscrito = (id) => {
     pedirConfirmacion("¿Dar de baja a este equipo del torneo?", async () => {
-      await fetch(`http://127.0.0.1:8000/api/inscripciones/${id}`, {
+      await fetch(`${API_BASE_URL}/inscripciones/${id}`, {
         method: "DELETE",
+        headers: authHeaders,
       });
 
       recargarInscritos(torneoActivoId);
@@ -242,7 +260,9 @@ const Torneos = () => {
   };
 
   const recargarLlavesSilencioso = async (id) => {
-    const res = await fetch(`http://127.0.0.1:8000/api/torneos/${id}/llaves`);
+    const res = await fetch(`${API_BASE_URL}/torneos/${id}/llaves`, {
+      headers: authHeaders,
+    });
     const data = await res.json();
     setLlavesData(data.data || []);
   };
@@ -253,9 +273,10 @@ const Torneos = () => {
       async () => {
         try {
           const res = await fetch(
-            `http://127.0.0.1:8000/api/torneos/${torneoActivoId}/sorteo`,
+            `${API_BASE_URL}/torneos/${torneoActivoId}/sorteo`,
             {
               method: "POST",
+              headers: authHeaders,
             }
           );
 
@@ -278,9 +299,9 @@ const Torneos = () => {
     setTorneoActivoId(idTorneo);
 
     try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/torneos/${idTorneo}/llaves`
-      );
+      const res = await fetch(`${API_BASE_URL}/torneos/${idTorneo}/llaves`, {
+        headers: authHeaders,
+      });
 
       const data = await res.json();
 
@@ -342,11 +363,9 @@ const Torneos = () => {
         : m.penales_2;
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/encuentros/${m.id}/marcador`, {
+      await fetch(`${API_BASE_URL}/encuentros/${m.id}/marcador`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: jsonAuthHeaders,
         body: JSON.stringify({
           goles_1: g1,
           goles_2: g2,
@@ -434,13 +453,9 @@ const Torneos = () => {
           if (equipos[1]) clasificados.push(equipos[1].nom);
         });
 
-        await fetch(
-          `http://127.0.0.1:8000/api/torneos/${torneoActivoId}/clasificar`,
-          {
+        await fetch(`${API_BASE_URL}/torneos/${torneoActivoId}/clasificar`, {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: jsonAuthHeaders,
             body: JSON.stringify({
               clasificados,
             }),
