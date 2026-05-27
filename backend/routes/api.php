@@ -129,4 +129,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/socio/reservas/{id}', [SocioPortalController::class, 'detalleReserva']);
     Route::patch('/socio/reservas/{id}/cancelar', [SocioPortalController::class, 'cancelarReserva']);
     Route::get('/socio/pagos/{id}', [SocioPortalController::class, 'detallePago']);
+    // ── Asistencia por QR (socio escanea el código de la sesión) ──
+    Route::post('/socio/asistencia/qr', [SocioPortalController::class, 'registrarAsistenciaQr']);
 });

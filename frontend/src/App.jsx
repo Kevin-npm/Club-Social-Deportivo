@@ -23,6 +23,7 @@ import SocioHome from "./pages/socio/SocioHome";
 import SocioReservas from "./pages/socio/SocioReservas";
 import SocioPagos from "./pages/socio/SocioPagos";
 import SocioNotificaciones from "./pages/socio/SocioNotificaciones";
+import SocioAsistencia from "./pages/socio/SocioAsistencia";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -45,6 +46,7 @@ function App() {
             <Route index element={<SocioHome />} />
             <Route path="reservas" element={<SocioReservas />} />
             <Route path="pagos" element={<SocioPagos />} />
+            <Route path="asistencia" element={<SocioAsistencia />} />
             <Route path="notificaciones" element={<SocioNotificaciones />} />
           </Route>
 
