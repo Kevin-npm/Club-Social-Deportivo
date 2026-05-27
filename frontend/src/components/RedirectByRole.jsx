@@ -4,17 +4,21 @@ import { useAuth } from "../context/AuthContext";
 export default function RedirectByRole() {
   const { token, user } = useAuth();
 
-  if (!token) {
+  if (!token || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user?.role === "socio") {
+  if (user.role === "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (user.role === "socio") {
     return <Navigate to="/socio" replace />;
   }
 
-  if (user?.role === "instructor") {
+  if (user.role === "instructor") {
     return <Navigate to="/calendario-instructor" replace />;
   }
 
-  return <Navigate to="/dashboard" replace />;
+  return <Navigate to="/login" replace />;
 }

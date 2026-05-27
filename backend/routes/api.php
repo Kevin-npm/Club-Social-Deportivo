@@ -59,6 +59,14 @@ Route::get('/pagos', [PagosController::class, 'index']);
 Route::get('/pagos/{id}', [PagosController::class, 'show']);
 
 Route::get('/torneos', [TorneoController::class, 'index']);
+Route::get('/torneos/{id}/inscripciones', [TorneoController::class, 'getInscripciones']);
+Route::post('/torneos/{id}/inscribir', [TorneoController::class, 'inscribir']);
+Route::put('/inscripciones/{id}', [TorneoController::class, 'editarInscripcion']);
+Route::delete('/inscripciones/{id}', [TorneoController::class, 'eliminarInscripcion']);
+Route::post('/torneos/{id}/sorteo', [TorneoController::class, 'generarSorteo']);
+Route::get('/torneos/{id}/llaves', [TorneoController::class, 'getLlaves']);
+Route::post('/encuentros/{id}/marcador', [TorneoController::class, 'guardarMarcador']);
+Route::post('/torneos/{id}/clasificar', [TorneoController::class, 'generarClasificacion']);
 
 Route::post('/confirmar-password', [ConfirmPasswordController::class, 'store']);
 
@@ -111,7 +119,6 @@ Route::middleware(['restrict.instructor'])->group(function () {
 
     Route::get('/reservas', [ReservasController::class, 'index']);
     Route::get('/reservas/{id}', [ReservasController::class, 'show']);
-
     Route::post('/reservas', [ReservasController::class, 'store'])
         ->middleware('bloquear.sancionado');
     Route::put('/reservas/{id}', [ReservasController::class, 'update']);

@@ -5,20 +5,24 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const location = useLocation();
   const { token, user } = useAuth();
 
-  if (!token) {
+  if (!token || !user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (allowedRoles?.length && !allowedRoles.includes(user?.role)) {
-    if (user?.role === "socio") {
+  if (allowedRoles?.length && !allowedRoles.includes(user.role)) {
+    if (user.role === "socio") {
       return <Navigate to="/socio" replace />;
     }
 
-    if (user?.role === "instructor") {
+    if (user.role === "instructor") {
       return <Navigate to="/calendario-instructor" replace />;
     }
 
-    return <Navigate to="/dashboard" replace />;
+    if (user.role === "admin") {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    return <Navigate to="/login" replace />;
   }
 
   return children;

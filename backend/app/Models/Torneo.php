@@ -12,6 +12,9 @@ class Torneo extends Model
     protected $table = 'tbl_torneos';
     protected $primaryKey = 'id_torneo';
 
+    // 🚀 LA SOLUCIÓN AL ERROR: Le decimos a Laravel que no busque created_at ni updated_at
+    public $timestamps = false;
+
     protected $fillable = [
         'id_disciplina', 
         'nombre_torneo', 
@@ -20,16 +23,19 @@ class Torneo extends Model
         'categoria', 
         'sede_principal', 
         'fecha_inicio', 
-        'fecha_fin'
+        'fecha_fin',
+        'cupo_maximo'
     ];
 
     public function encuentros()
     {
+        // Corrección: Tu primary key es id_torneo, no id.
         return $this->hasMany(Encuentro::class, 'torneo_id', 'id_torneo');
     }
 
     public function participantes()
     {
+        // Corrección: Tu primary key es id_torneo, no id.
         return $this->hasMany(JugadorTemporal::class, 'id_torneo', 'id_torneo');
     }
 
