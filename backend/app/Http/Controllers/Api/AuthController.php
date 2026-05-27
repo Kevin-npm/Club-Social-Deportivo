@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
@@ -20,7 +19,13 @@ class AuthController extends Controller
             ->where('activo', true)
             ->first();
 
-        if (!$usuario || !$this->passwordIsValid($request->password, $usuario->password_hash)) {
+        if (!$usuario) {
+            return response()->json([
+                'message' => 'Credenciales incorrectas'
+            ], 401);
+        }
+
+        if ($request->password !== $usuario->password_hash) {
             return response()->json([
                 'message' => 'Credenciales incorrectas'
             ], 401);
@@ -40,7 +45,7 @@ class AuthController extends Controller
                 'email' => $usuario->email,
                 'id_rol' => $usuario->id_rol,
                 'role' => $this->mapRole($usuario->id_rol),
-            ],
+            ]
         ]);
     }
 
@@ -54,7 +59,7 @@ class AuthController extends Controller
                 'email' => $usuario->email,
                 'id_rol' => $usuario->id_rol,
                 'role' => $this->mapRole($usuario->id_rol),
-            ],
+            ]
         ]);
     }
 
@@ -75,14 +80,5 @@ class AuthController extends Controller
             3 => 'instructor',
             default => 'usuario',
         };
-    }
-
-    private function passwordIsValid(string $plainPassword, string $storedPassword): bool
-    {
-        if (str_starts_with($storedPassword, '$2y$') || str_starts_with($storedPassword, '$argon')) {
-            return Hash::check($plainPassword, $storedPassword);
-        }
-
-        return $plainPassword === $storedPassword;
     }
 }

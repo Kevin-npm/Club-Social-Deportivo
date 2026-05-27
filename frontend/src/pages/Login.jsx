@@ -25,23 +25,13 @@ export default function Login() {
   };
 
   const redirectByRole = (role) => {
-  if (role === "admin") {
+    if (role === "socio") {
+      navigate("/socio", { replace: true });
+      return;
+    }
+
     navigate("/dashboard", { replace: true });
-    return;
-  }
-
-  if (role === "socio") {
-    navigate("/socio", { replace: true });
-    return;
-  }
-
-  if (role === "instructor") {
-    navigate("/calendario-instructor", { replace: true });
-    return;
-  }
-
-  navigate("/login", { replace: true });
-};
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
