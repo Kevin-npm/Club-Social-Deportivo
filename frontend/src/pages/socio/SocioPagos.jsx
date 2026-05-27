@@ -98,42 +98,43 @@ export default function SocioPagos() {
   }, [token]);
 
   if (loading) {
-    return <p className="text-slate-600">Cargando pagos...</p>;
+    return <p className="text-slate-300">Cargando pagos...</p>;
   }
 
   return (
     <section>
-      <h2 className="text-2xl font-bold text-slate-900 mb-2">Mis pagos</h2>
-      <p className="text-slate-500">
+      <h2 className="text-2xl font-bold text-white mb-2">Mis pagos</h2>
+
+      <p className="text-slate-400">
         Consulta tus pagos registrados y comprobantes digitales.
       </p>
 
       {error && (
-        <div className="mt-4 bg-red-100 text-red-700 rounded-lg px-4 py-3">
+        <div className="mt-4 bg-red-950/50 border border-red-800 text-red-300 rounded-lg px-4 py-3">
           {error}
         </div>
       )}
 
       <div className="grid md:grid-cols-2 gap-4 mt-6">
-        <div className="bg-white rounded-2xl shadow p-6">
-          <p className="text-sm text-slate-500">Pagos registrados</p>
-          <p className="text-3xl font-bold text-slate-900">{pagos.length}</p>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow p-6">
+          <p className="text-sm text-slate-400">Pagos registrados</p>
+          <p className="text-3xl font-bold text-white">{pagos.length}</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow p-6">
-          <p className="text-sm text-slate-500">Total pagado</p>
-          <p className="text-3xl font-bold text-slate-900">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow p-6">
+          <p className="text-sm text-slate-400">Total pagado</p>
+          <p className="text-3xl font-bold text-yellow-400">
             {formatCurrency(totalPagado)}
           </p>
         </div>
       </div>
 
-      <div className="mt-6 bg-white rounded-2xl shadow overflow-hidden">
+      <div className="mt-6 bg-slate-900 border border-slate-800 rounded-2xl shadow overflow-hidden">
         {pagos.length === 0 ? (
-          <div className="p-6 text-slate-600">No tienes pagos registrados.</div>
+          <div className="p-6 text-slate-300">No tienes pagos registrados.</div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="bg-slate-100 text-slate-700">
+          <table className="w-full text-left text-slate-300">
+            <thead className="bg-slate-950/80 text-yellow-400 border-b border-slate-800">
               <tr>
                 <th className="p-4">Folio</th>
                 <th className="p-4">Concepto</th>
@@ -146,21 +147,29 @@ export default function SocioPagos() {
 
             <tbody>
               {pagos.map((pago) => (
-                <tr key={pago.id_pago} className="border-t">
-                  <td className="p-4 font-medium">
+                <tr
+                  key={pago.id_pago}
+                  className="border-t border-slate-800 hover:bg-slate-800/60 transition"
+                >
+                  <td className="p-4 font-medium text-white">
                     {pago.folio_digital || "Sin folio"}
                   </td>
+
                   <td className="p-4">{pago.concepto}</td>
+
                   <td className="p-4">
                     {pago.metodo?.nombre_metodo || `Método #${pago.id_metodo}`}
                   </td>
+
                   <td className="p-4">{formatCurrency(pago.monto)}</td>
+
                   <td className="p-4">{formatDate(pago.fecha_pago)}</td>
+
                   <td className="p-4">
                     <button
                       onClick={() => verDetalle(pago.id_pago)}
                       disabled={detalleLoading}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg px-4 py-2 text-sm"
+                      className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-yellow-900/50 text-slate-950 font-semibold rounded-lg px-4 py-2 text-sm"
                     >
                       Ver detalle
                     </button>
@@ -173,21 +182,22 @@ export default function SocioPagos() {
       </div>
 
       {pagoDetalle && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl p-6 print:shadow-none">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl shadow-xl w-full max-w-2xl p-6 print:shadow-none">
             <div className="flex justify-between items-start gap-4 mb-6 print:hidden">
               <div>
-                <h3 className="text-xl font-bold text-slate-900">
+                <h3 className="text-xl font-bold text-white">
                   Comprobante de pago
                 </h3>
-                <p className="text-slate-500">
+
+                <p className="text-slate-400">
                   Folio: {pagoDetalle.folio_digital || "Sin folio"}
                 </p>
               </div>
 
               <button
                 onClick={() => setPagoDetalle(null)}
-                className="text-slate-500 hover:text-slate-900 text-xl"
+                className="text-slate-400 hover:text-white text-xl"
               >
                 ×
               </button>
@@ -200,7 +210,9 @@ export default function SocioPagos() {
 
             <div className="grid md:grid-cols-2 gap-4">
               <InfoItem label="Folio digital" value={pagoDetalle.folio_digital} />
+
               <InfoItem label="Concepto" value={pagoDetalle.concepto} />
+
               <InfoItem
                 label="Método de pago"
                 value={
@@ -208,22 +220,28 @@ export default function SocioPagos() {
                   `Método #${pagoDetalle.id_metodo}`
                 }
               />
+
               <InfoItem label="Monto" value={formatCurrency(pagoDetalle.monto)} />
+
               <InfoItem label="Referencia" value={pagoDetalle.referencia} />
-              <InfoItem label="Fecha de pago" value={formatDate(pagoDetalle.fecha_pago)} />
+
+              <InfoItem
+                label="Fecha de pago"
+                value={formatDate(pagoDetalle.fecha_pago)}
+              />
             </div>
 
             <div className="flex justify-end gap-3 mt-6 print:hidden">
               <button
                 onClick={() => setPagoDetalle(null)}
-                className="border border-slate-300 text-slate-700 rounded-lg px-4 py-2"
+                className="border border-slate-700 text-slate-300 hover:bg-slate-800 rounded-lg px-4 py-2"
               >
                 Cerrar
               </button>
 
               <button
                 onClick={imprimirComprobante}
-                className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-4 py-2"
+                className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-semibold rounded-lg px-4 py-2"
               >
                 Imprimir / Guardar PDF
               </button>
@@ -237,9 +255,10 @@ export default function SocioPagos() {
 
 function InfoItem({ label, value }) {
   return (
-    <div className="border border-slate-200 rounded-xl p-4">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="font-semibold text-slate-900">
+    <div className="border border-slate-800 bg-slate-950/60 rounded-xl p-4">
+      <p className="text-sm text-slate-400">{label}</p>
+
+      <p className="font-semibold text-white">
         {value || "No registrado"}
       </p>
     </div>
