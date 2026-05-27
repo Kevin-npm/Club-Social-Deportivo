@@ -2,14 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Check, Menu, User, Settings, LogOut } from "lucide-react";
 
-<<<<<<< HEAD
-const SOCIO_ID_SIMULADO = 5;
-=======
 import { headerActions } from "../config/header_actions";
 import API_BASE_URL from "../config/api";
 import { useRoleSimulator } from "../context/RoleSimulatorContext";
 import { useAuth } from "../context/AuthContext";
->>>>>>> 5f2d088 (feat: Ajustes finales configuracion y notificaciones)
 
 const TopHeader = ({ onMenuToggle }) => {
   const location = useLocation();
@@ -148,32 +144,19 @@ const TopHeader = ({ onMenuToggle }) => {
             )}
           </button>
 
-<<<<<<< HEAD
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-3 w-72 sm:w-96 max-w-[calc(100vw-1rem)] bg-[#1c1f26] border border-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden">
-=======
           {isNotificationsOpen && (
-            <div className="absolute right-0 mt-3 w-96 bg-[#1c1f26] border border-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden">
->>>>>>> 5f2d088 (feat: Ajustes finales configuracion y notificaciones)
+            <div className="absolute right-0 mt-3 w-72 sm:w-96 max-w-[calc(100vw-1rem)] bg-[#1c1f26] border border-gray-800 rounded-xl shadow-2xl z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-white">
                     Notificaciones
                   </p>
-<<<<<<< HEAD
-                  <p className="text-xs text-gray-500 truncate">
-                    Socio simulado #{SOCIO_ID_SIMULADO}
-                  </p>
-                </div>
-                <span className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded-full font-bold shrink-0">
-=======
                   <p className="text-xs text-gray-500">
                     Usuario autenticado
                   </p>
                 </div>
 
-                <span className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded-full font-bold">
->>>>>>> 5f2d088 (feat: Ajustes finales configuracion y notificaciones)
+                <span className="text-xs bg-red-500/10 text-red-400 px-2 py-1 rounded-full font-bold shrink-0">
                   {noLeidas} nuevas
                 </span>
               </div>
@@ -203,12 +186,8 @@ const TopHeader = ({ onMenuToggle }) => {
                           >
                             {n.titulo}
                           </p>
-<<<<<<< HEAD
-                          <p className="text-xs text-gray-500 mt-1 leading-snug break-words">
-=======
 
-                          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
->>>>>>> 5f2d088 (feat: Ajustes finales configuracion y notificaciones)
+                          <p className="text-xs text-gray-500 mt-1 leading-relaxed break-words">
                             {n.mensaje}
                           </p>
 
@@ -226,14 +205,10 @@ const TopHeader = ({ onMenuToggle }) => {
                         )}
 
                         {n.leido_boolean && (
-<<<<<<< HEAD
-                          <Check size={15} className="text-green-400 shrink-0 mt-0.5" />
-=======
                           <Check
                             size={15}
-                            className="text-green-400 shrink-0"
+                            className="text-green-400 shrink-0 mt-0.5"
                           />
->>>>>>> 5f2d088 (feat: Ajustes finales configuracion y notificaciones)
                         )}
                       </div>
                     </button>
