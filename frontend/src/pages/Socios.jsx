@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { createPortal } from "react-dom";
+
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -18,12 +19,9 @@ import {
   ChevronsRight,
 } from "lucide-react";
 
-import API_BASE_URL from "../config/api";
-import { useAuth } from "../context/AuthContext";
-
-const API_URL = `${API_BASE_URL}/socios`;
-const API_DEPENDIENTES = `${API_BASE_URL}/dependientes`;
-const API_INVITADOS = `${API_BASE_URL}/invitados`;
+const API_URL = "http://localhost:8000/api/socios";
+const API_DEPENDIENTES = "http://localhost:8000/api/dependientes";
+const API_INVITADOS = "http://localhost:8000/api/invitados";
 const ITEMS_PER_PAGE = 10;
 
 const initialEditForm = {
@@ -62,24 +60,6 @@ const labelClass = "mb-1 block text-sm font-medium text-gray-300";
 const Socios = () => {
   const navigate = useNavigate();
   const invitadosRef = useRef(null);
-  const { token } = useAuth();
-
-  const authHeaders = useMemo(
-    () => ({
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    }),
-    [token]
-  );
-
-  const authJsonHeaders = useMemo(
-    () => ({
-      "Content-Type": "application/json",
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    }),
-    [token]
-  );
 
   const [socios, setSocios] = useState([]);
   const [dependientes, setDependientes] = useState([]);
@@ -96,6 +76,7 @@ const Socios = () => {
   const [createFormData, setCreateFormData] = useState(initialCreateForm);
   const [savingCreate, setSavingCreate] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMembresia, setFilterMembresia] = useState("");
@@ -125,42 +106,34 @@ const Socios = () => {
   useEffect(() => {
     const check = () => setWindowSize(window.innerWidth < 768 ? 3 : 10);
     check();
-
     window.addEventListener("resize", check);
-
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const parseJsonResponse = async (response) => {
-    const text = await response.text();
-
-    try {
-      return text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error("El servidor no respondió con JSON válido.");
-    }
-  };
-
-  const fetchSocios = useCallback(async () => {
+  const fetchSocios = async () => {
     const res = await fetch(API_URL, {
-      headers: authHeaders,
+      headers: {
+        Accept: "application/json",
+      },
     });
 
-    const result = await parseJsonResponse(res);
+    const result = await res.json();
 
     if (!res.ok) {
       throw new Error(result.message || "No se pudo obtener la lista de socios");
     }
 
     setSocios(result.data || []);
-  }, [authHeaders]);
+  };
 
-  const fetchDependientes = useCallback(async () => {
+  const fetchDependientes = async () => {
     const res = await fetch(API_DEPENDIENTES, {
-      headers: authHeaders,
+      headers: {
+        Accept: "application/json",
+      },
     });
 
-    const result = await parseJsonResponse(res);
+    const result = await res.json();
 
     if (!res.ok) {
       throw new Error(
@@ -169,45 +142,34 @@ const Socios = () => {
     }
 
     setDependientes(result.data || []);
-  }, [authHeaders]);
+  };
 
-  const fetchInvitados = useCallback(
-    async (filters = {}) => {
-      const params = new URLSearchParams();
+  const fetchInvitados = async () => {
+    const params = new URLSearchParams();
+    if (filterInvitadoFecha) params.set("fecha", filterInvitadoFecha);
+    if (filterInvitadoEstatus) params.set("estatus", filterInvitadoEstatus);
 
-      const fecha = filters.fecha ?? filterInvitadoFecha;
-      const estatus = filters.estatus ?? filterInvitadoEstatus;
+    const res = await fetch(`${API_INVITADOS}?${params.toString()}`, {
+      headers: {
+        Accept: "application/json",
+      },
+    });
 
-      if (fecha) params.set("fecha", fecha);
-      if (estatus) params.set("estatus", estatus);
+    const result = await res.json();
 
-      const queryString = params.toString();
-      const url = queryString ? `${API_INVITADOS}?${queryString}` : API_INVITADOS;
+    if (!res.ok) {
+      throw new Error(
+        result.message || "No se pudo obtener la lista de invitados"
+      );
+    }
 
-      const res = await fetch(url, {
-        headers: authHeaders,
-      });
+    setInvitados(result.data || []);
+  };
 
-      const result = await parseJsonResponse(res);
-
-      if (!res.ok) {
-        throw new Error(
-          result.message || "No se pudo obtener la lista de invitados"
-        );
-      }
-
-      setInvitados(result.data || []);
-    },
-    [authHeaders, filterInvitadoFecha, filterInvitadoEstatus]
-  );
-
-  const cargarTodo = useCallback(async () => {
-    if (!token) return;
-
+  const cargarTodo = async () => {
     try {
       setLoading(true);
       setError("");
-
       await Promise.all([fetchSocios(), fetchDependientes(), fetchInvitados()]);
     } catch (err) {
       console.error("Error al cargar socios:", err);
@@ -215,40 +177,24 @@ const Socios = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, fetchSocios, fetchDependientes, fetchInvitados]);
+  };
 
   const sociosFiltrados = useMemo(() => {
     return socios.filter((s) => {
-      const nombre = s.nombre || "";
-      const apellidos = s.apellidos || "";
-      const idSocio = s.id_socio ? String(s.id_socio) : "";
+      const matchesSearch = !searchTerm ||
+        s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.id_socio.toString().includes(searchTerm);
 
-      const matchesSearch =
-        !searchTerm ||
-        nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        idSocio.includes(searchTerm);
+      const matchesMembresia = !filterMembresia || s.tipo_membresia === filterMembresia;
+      const matchesModalidad = !filterModalidad || s.modalidad === filterModalidad;
+      const matchesEstatus = !filterEstatus || s.estatus_financiero === filterEstatus;
 
-      const matchesMembresia =
-        !filterMembresia || s.tipo_membresia === filterMembresia;
-
-      const matchesModalidad =
-        !filterModalidad || s.modalidad === filterModalidad;
-
-      const matchesEstatus =
-        !filterEstatus || s.estatus_financiero === filterEstatus;
-
-      return (
-        matchesSearch && matchesMembresia && matchesModalidad && matchesEstatus
-      );
+      return matchesSearch && matchesMembresia && matchesModalidad && matchesEstatus;
     });
   }, [socios, searchTerm, filterMembresia, filterModalidad, filterEstatus]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(sociosFiltrados.length / ITEMS_PER_PAGE)
-  );
-
+  const totalPages = Math.max(1, Math.ceil(sociosFiltrados.length / ITEMS_PER_PAGE));
   const paginatedSocios = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return sociosFiltrados.slice(start, start + ITEMS_PER_PAGE);
@@ -256,26 +202,17 @@ const Socios = () => {
 
   const invitadosFiltrados = useMemo(() => {
     return invitados.filter((inv) => {
-      const nombre = inv.nombre || "";
-      const apellidos = inv.apellidos || "";
+      const matchesSearch = !searchTerm ||
+        inv.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        inv.apellidos.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesSearch =
-        !searchTerm ||
-        nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apellidos.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesEstatus =
-        !filterInvitadoEstatus || inv.estatus === filterInvitadoEstatus;
+      const matchesEstatus = !filterInvitadoEstatus || inv.estatus === filterInvitadoEstatus;
 
       return matchesSearch && matchesEstatus;
     });
   }, [invitados, searchTerm, filterInvitadoEstatus]);
 
-  const invitadosTotalPages = Math.max(
-    1,
-    Math.ceil(invitadosFiltrados.length / ITEMS_PER_PAGE)
-  );
-
+  const invitadosTotalPages = Math.max(1, Math.ceil(invitadosFiltrados.length / ITEMS_PER_PAGE));
   const paginatedInvitados = useMemo(() => {
     const start = (invitadosPage - 1) * ITEMS_PER_PAGE;
     return invitadosFiltrados.slice(start, start + ITEMS_PER_PAGE);
@@ -283,7 +220,7 @@ const Socios = () => {
 
   useEffect(() => {
     cargarTodo();
-  }, [cargarTodo]);
+  }, []);
 
   useEffect(() => {
     const handleOpenCreateModal = () => openCreateModal();
@@ -298,16 +235,11 @@ const Socios = () => {
     };
   }, [selectedSocios, socios]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterMembresia, filterModalidad, filterEstatus]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterMembresia, filterModalidad, filterEstatus]);
 
   useEffect(() => {
     if (showInvitadosTable && invitadosRef.current) {
-      invitadosRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      invitadosRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [showInvitadosTable]);
 
@@ -354,20 +286,15 @@ const Socios = () => {
 
   const handleCreateChange = (e) => {
     const { name, value } = e.target;
-
     setCreateFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-
-    if (name === "correo") {
-      setCreateError("");
-    }
+    if (name === 'correo') setCreateError("");
   };
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-
     setEditFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -397,22 +324,21 @@ const Socios = () => {
 
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: authJsonHeaders,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
-      const result = await parseJsonResponse(res);
+      const result = await res.json();
 
       if (!res.ok) {
         console.error("Error al registrar socio:", result);
-
         if (result.errors) {
           const mensajes = Object.values(result.errors).flat().join(". ");
-          throw new Error(
-            mensajes || result.message || "No se pudo registrar el socio"
-          );
+          throw new Error(mensajes || result.message || "No se pudo registrar el socio");
         }
-
         throw new Error(result.message || "No se pudo registrar el socio");
       }
 
@@ -442,11 +368,14 @@ const Socios = () => {
 
       const res = await fetch(`${API_URL}/${editingId}`, {
         method: "PUT",
-        headers: authJsonHeaders,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
-      const result = await parseJsonResponse(res);
+      const result = await res.json();
 
       if (!res.ok) {
         console.error("Error al actualizar socio:", result);
@@ -469,10 +398,12 @@ const Socios = () => {
 
       const res = await fetch(`${API_URL}/${id}/activar`, {
         method: "PATCH",
-        headers: authHeaders,
+        headers: {
+          Accept: "application/json",
+        },
       });
 
-      const result = await parseJsonResponse(res);
+      const result = await res.json();
 
       if (!res.ok) {
         console.error("Error al activar membresía:", result);
@@ -482,7 +413,7 @@ const Socios = () => {
       await cargarTodo();
     } catch (err) {
       console.error("Error al activar membresía:", err);
-      setError(err.message || "Error al activar membresía.");
+      setError("Error al activar membresía.");
     }
   };
 
@@ -524,10 +455,12 @@ const Socios = () => {
         selectedSocios.map(async (id) => {
           const res = await fetch(`${API_URL}/${id}`, {
             method: "DELETE",
-            headers: authHeaders,
+            headers: {
+              Accept: "application/json",
+            },
           });
 
-          const result = await parseJsonResponse(res);
+          const result = await res.json();
 
           if (!res.ok) {
             throw new Error(
@@ -575,7 +508,6 @@ const Socios = () => {
 
   const handleInvitadoChange = (e) => {
     const { name, value } = e.target;
-
     setInvitadoFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -596,11 +528,14 @@ const Socios = () => {
 
       const res = await fetch(API_INVITADOS, {
         method: "POST",
-        headers: authJsonHeaders,
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify(payload),
       });
 
-      const result = await parseJsonResponse(res);
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(result.message || "No se pudo registrar el invitado");
@@ -622,10 +557,12 @@ const Socios = () => {
 
       const res = await fetch(`${API_INVITADOS}/${id}/marcar-asistencia`, {
         method: "POST",
-        headers: authHeaders,
+        headers: {
+          Accept: "application/json",
+        },
       });
 
-      const result = await parseJsonResponse(res);
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(result.message || "No se pudo marcar la asistencia");
@@ -646,10 +583,12 @@ const Socios = () => {
 
       const res = await fetch(`${API_INVITADOS}/${id}`, {
         method: "DELETE",
-        headers: authHeaders,
+        headers: {
+          Accept: "application/json",
+        },
       });
 
-      const result = await parseJsonResponse(res);
+      const result = await res.json();
 
       if (!res.ok) {
         throw new Error(result.message || "No se pudo eliminar el invitado");
@@ -662,6 +601,7 @@ const Socios = () => {
     }
   };
 
+  const showCreateVigencia = createFormData.tipo_membresia === "Rentista";
   const showEditVigencia = editFormData.tipo_membresia === "Rentista";
 
   const dependientesPorTitular = useMemo(() => {
@@ -679,15 +619,12 @@ const Socios = () => {
 
   const stats = useMemo(() => {
     const total = sociosFiltrados.length;
-
     const vigentes = sociosFiltrados.filter(
       (s) => (s.estatus_financiero || "").toLowerCase() === "vigente"
     ).length;
 
     const inactivos = sociosFiltrados.filter((s) =>
-      ["inactivo", "suspendido", "adeudo"].includes(
-        (s.estatus_financiero || "").toLowerCase()
-      )
+      ["inactivo", "suspendido", "adeudo"].includes((s.estatus_financiero || "").toLowerCase())
     ).length;
 
     const rentistas = sociosFiltrados.filter(
@@ -737,25 +674,16 @@ const Socios = () => {
     return "bg-slate-500/15 text-slate-300 border border-slate-500/20";
   };
 
-  const Pagination = ({
-    current,
-    total,
-    onPageChange,
-    count,
-    windowSize = 10,
-  }) => {
+  const Pagination = ({ current, total, onPageChange, count, windowSize = 10 }) => {
     if (total <= 1) return null;
-
     const currentWindow = Math.ceil(current / windowSize);
     const startPage = (currentWindow - 1) * windowSize + 1;
     const endPage = Math.min(startPage + windowSize - 1, total);
-
     return (
       <div className="flex items-center justify-between px-4 md:px-5 py-3 border-t border-gray-800">
         <p className="text-xs text-gray-500">
           {count} registros — Pág. {current} de {total}
         </p>
-
         <div className="flex items-center gap-1">
           <button
             onClick={() => onPageChange(Math.max(1, current - windowSize))}
@@ -765,7 +693,6 @@ const Socios = () => {
           >
             <ChevronsLeft size={16} />
           </button>
-
           <button
             onClick={() => onPageChange(Math.max(1, current - 1))}
             disabled={current === 1}
@@ -773,11 +700,7 @@ const Socios = () => {
           >
             <ChevronLeft size={16} />
           </button>
-
-          {Array.from(
-            { length: endPage - startPage + 1 },
-            (_, i) => startPage + i
-          ).map((page) => (
+          {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map((page) => (
             <button
               key={page}
               onClick={() => onPageChange(page)}
@@ -790,7 +713,6 @@ const Socios = () => {
               {page}
             </button>
           ))}
-
           <button
             onClick={() => onPageChange(Math.min(total, current + 1))}
             disabled={current === total}
@@ -798,7 +720,6 @@ const Socios = () => {
           >
             <ChevronRight size={16} />
           </button>
-
           <button
             onClick={() => onPageChange(Math.min(total, startPage + windowSize))}
             disabled={endPage === total}
@@ -826,9 +747,7 @@ const Socios = () => {
             <Users size={16} />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
-              Total socios
-            </p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Total socios</p>
             <p className="text-lg md:text-xl font-bold">{stats.total}</p>
           </div>
         </div>
@@ -838,9 +757,7 @@ const Socios = () => {
             <CircleCheckBig size={16} />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
-              Vigentes
-            </p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Vigentes</p>
             <p className="text-lg md:text-xl font-bold">{stats.vigentes}</p>
           </div>
         </div>
@@ -850,9 +767,7 @@ const Socios = () => {
             <CircleOff size={16} />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
-              Con incidencia
-            </p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Con incidencia</p>
             <p className="text-lg md:text-xl font-bold">{stats.inactivos}</p>
           </div>
         </div>
@@ -862,19 +777,14 @@ const Socios = () => {
             <BadgeCheck size={16} />
           </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
-              Rentistas
-            </p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Rentistas</p>
             <p className="text-lg md:text-xl font-bold">{stats.rentistas}</p>
           </div>
         </div>
       </div>
 
       {showInvitadosTable && (
-        <div
-          ref={invitadosRef}
-          className="bg-[#14171c] rounded-xl border border-cyan-800/30 overflow-hidden"
-        >
+        <div ref={invitadosRef} className="bg-[#14171c] rounded-xl border border-cyan-800/30 overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 md:p-5 border-b border-gray-800">
             <div>
               <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
@@ -882,8 +792,7 @@ const Socios = () => {
                 Control de invitados
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                Invitados registrados &mdash; v&aacute;lidos solo por el
-                d&iacute;a
+                Invitados registrados &mdash; v&aacute;lidos solo por el d&iacute;a
               </p>
             </div>
 
@@ -891,21 +800,13 @@ const Socios = () => {
               <input
                 type="date"
                 value={filterInvitadoFecha}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFilterInvitadoFecha(value);
-                  fetchInvitados({ fecha: value });
-                }}
+                onChange={(e) => { setFilterInvitadoFecha(e.target.value); fetchInvitados(); }}
                 className="rounded-lg border border-gray-700 bg-[#0f131a] px-3 py-1.5 text-sm text-white outline-none focus:border-cyan-400 w-36"
               />
 
               <select
                 value={filterInvitadoEstatus}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setFilterInvitadoEstatus(value);
-                  fetchInvitados({ estatus: value });
-                }}
+                onChange={(e) => { setFilterInvitadoEstatus(e.target.value); fetchInvitados(); }}
                 className="rounded-lg border border-gray-700 bg-[#0f131a] px-3 py-1.5 text-sm text-white outline-none focus:border-cyan-400"
               >
                 <option value="">Todos los estatus</option>
@@ -916,7 +817,7 @@ const Socios = () => {
               </select>
 
               <button
-                onClick={() => fetchInvitados()}
+                onClick={fetchInvitados}
                 className="p-1.5 rounded-lg border border-gray-700 bg-[#0f131a] text-gray-300 hover:border-gray-600 hover:text-white transition"
                 title="Recargar invitados"
               >
@@ -926,13 +827,9 @@ const Socios = () => {
           </div>
 
           {loading ? (
-            <div className="px-6 py-12 text-center text-gray-400 text-sm">
-              Cargando invitados...
-            </div>
+            <div className="px-6 py-12 text-center text-gray-400 text-sm">Cargando invitados...</div>
           ) : invitadosFiltrados.length === 0 ? (
-            <div className="px-6 py-12 text-center text-gray-500 text-sm">
-              No hay invitados registrados.
-            </div>
+            <div className="px-6 py-12 text-center text-gray-500 text-sm">No hay invitados registrados.</div>
           ) : (
             <>
               <div className="hidden md:block overflow-x-auto">
@@ -941,75 +838,44 @@ const Socios = () => {
                     <tr className="text-gray-500 text-xs uppercase tracking-wider border-b border-gray-800">
                       <th className="px-4 py-3 font-medium">ID</th>
                       <th className="px-4 py-3 font-medium">Nombre</th>
-                      <th className="px-4 py-3 font-medium">
-                        Socio que invita
-                      </th>
-                      <th className="px-4 py-3 font-medium">
-                        Fecha registro
-                      </th>
+                      <th className="px-4 py-3 font-medium">Socio que invita</th>
+                      <th className="px-4 py-3 font-medium">Fecha registro</th>
                       <th className="px-4 py-3 font-medium">Estatus</th>
                       <th className="px-4 py-3 font-medium">Acciones</th>
                     </tr>
                   </thead>
-
                   <tbody className="divide-y divide-gray-800">
                     {paginatedInvitados.map((inv, idx) => (
-                      <tr
-                        key={inv.id_invitado}
-                        className={`transition-colors ${
-                          idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"
-                        } hover:bg-gray-800/30`}
-                      >
-                        <td className="px-4 py-3 text-sm text-gray-300">
-                          {inv.id_invitado}
-                        </td>
-
-                        <td className="px-4 py-3 text-sm font-medium text-white">
-                          {inv.nombre} {inv.apellidos}
-                        </td>
-
+                      <tr key={inv.id_invitado} className={`transition-colors ${idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"} hover:bg-gray-800/30`}>
+                        <td className="px-4 py-3 text-sm text-gray-300">{inv.id_invitado}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-white">{inv.nombre} {inv.apellidos}</td>
                         <td className="px-4 py-3 text-sm text-gray-400">
-                          {inv.socio
-                            ? `${inv.socio.nombre} ${inv.socio.apellidos}`
-                            : "—"}
+                          {inv.socio ? `${inv.socio.nombre} ${inv.socio.apellidos}` : "—"}
                         </td>
-
                         <td className="px-4 py-3 text-sm text-gray-400">
                           <span className="flex items-center gap-1.5">
                             <Calendar size={13} className="text-gray-500" />
                             {inv.fecha_registro?.slice(0, 10)}
                           </span>
                         </td>
-
                         <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getInvitadoStatusBadge(
-                              inv.estatus
-                            )}`}
-                          >
+                          <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getInvitadoStatusBadge(inv.estatus)}`}>
                             {inv.estatus}
                           </span>
                         </td>
-
                         <td className="px-4 py-3">
                           <div className="flex gap-1.5">
-                            {(inv.estatus === "Pendiente" ||
-                              inv.estatus === "Autorizado") && (
+                            {(inv.estatus === "Pendiente" || inv.estatus === "Autorizado") && (
                               <button
-                                onClick={() =>
-                                  handleMarcarAsistencia(inv.id_invitado)
-                                }
+                                onClick={() => handleMarcarAsistencia(inv.id_invitado)}
                                 className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1"
                               >
                                 <CircleCheckBig size={13} />
                                 Entrada
                               </button>
                             )}
-
                             <button
-                              onClick={() =>
-                                handleEliminarInvitado(inv.id_invitado)
-                              }
+                              onClick={() => handleEliminarInvitado(inv.id_invitado)}
                               className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition"
                             >
                               Eliminar
@@ -1024,54 +890,28 @@ const Socios = () => {
 
               <div className="md:hidden divide-y divide-gray-800">
                 {paginatedInvitados.map((inv) => (
-                  <div
-                    key={inv.id_invitado}
-                    className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors"
-                  >
+                  <div key={inv.id_invitado} className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors">
                     <div className="flex items-start justify-between">
                       <div>
-                        <h3 className="font-semibold text-sm text-white">
-                          {inv.nombre} {inv.apellidos}
-                        </h3>
-                        <p className="text-xs text-gray-500">
-                          ID: {inv.id_invitado}
-                        </p>
+                        <h3 className="font-semibold text-sm text-white">{inv.nombre} {inv.apellidos}</h3>
+                        <p className="text-xs text-gray-500">ID: {inv.id_invitado}</p>
                       </div>
-
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getInvitadoStatusBadge(
-                          inv.estatus
-                        )}`}
-                      >
+                      <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getInvitadoStatusBadge(inv.estatus)}`}>
                         {inv.estatus}
                       </span>
                     </div>
-
                     <p className="text-xs text-gray-400">
-                      Invita:{" "}
-                      {inv.socio
-                        ? `${inv.socio.nombre} ${inv.socio.apellidos}`
-                        : "—"}{" "}
-                      · {inv.fecha_registro?.slice(0, 10)}
+                      Invita: {inv.socio ? `${inv.socio.nombre} ${inv.socio.apellidos}` : "—"} · {inv.fecha_registro?.slice(0, 10)}
                     </p>
-
                     <div className="flex gap-1.5 justify-end">
-                      {(inv.estatus === "Pendiente" ||
-                        inv.estatus === "Autorizado") && (
-                        <button
-                          onClick={() =>
-                            handleMarcarAsistencia(inv.id_invitado)
-                          }
-                          className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1"
-                        >
+                      {(inv.estatus === "Pendiente" || inv.estatus === "Autorizado") && (
+                        <button onClick={() => handleMarcarAsistencia(inv.id_invitado)}
+                          className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1">
                           <CircleCheckBig size={13} /> Entrada
                         </button>
                       )}
-
-                      <button
-                        onClick={() => handleEliminarInvitado(inv.id_invitado)}
-                        className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition"
-                      >
+                      <button onClick={() => handleEliminarInvitado(inv.id_invitado)}
+                        className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-red-500/20 bg-red-500/10 text-red-300 hover:bg-red-500/20 transition">
                         Eliminar
                       </button>
                     </div>
@@ -1079,13 +919,7 @@ const Socios = () => {
                 ))}
               </div>
 
-              <Pagination
-                current={invitadosPage}
-                total={invitadosTotalPages}
-                onPageChange={setInvitadosPage}
-                count={invitadosFiltrados.length}
-                windowSize={windowSize}
-              />
+              <Pagination current={invitadosPage} total={invitadosTotalPages} onPageChange={setInvitadosPage} count={invitadosFiltrados.length} windowSize={windowSize} />
             </>
           )}
         </div>
@@ -1094,17 +928,13 @@ const Socios = () => {
       <div className="bg-[#14171c] rounded-xl border border-gray-800">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 md:p-5 border-b border-gray-800">
           <div>
-            <h2 className="text-base md:text-lg font-bold text-white">
-              Directorio de socios
-            </h2>
-
+            <h2 className="text-base md:text-lg font-bold text-white">Directorio de socios</h2>
             {selectedSocios.length > 0 && (
               <p className="mt-0.5 text-xs text-yellow-400">
                 {selectedSocios.length} seleccionado(s)
               </p>
             )}
           </div>
-
           <div className="flex gap-2">
             <button
               onClick={() => setShowInvitadosTable(!showInvitadosTable)}
@@ -1117,7 +947,6 @@ const Socios = () => {
               <DoorOpen size={15} />
               {showInvitadosTable ? "Ver socios" : "Ver invitados"}
             </button>
-
             <button
               onClick={cargarTodo}
               className="p-1.5 rounded-lg border border-gray-700 bg-[#0f131a] text-gray-300 hover:border-gray-600 hover:text-white transition"
@@ -1133,7 +962,6 @@ const Socios = () => {
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
               <UserRoundSearch size={16} />
             </div>
-
             <input
               type="text"
               placeholder="Nombre o ID..."
@@ -1177,13 +1005,9 @@ const Socios = () => {
         </div>
 
         {loading ? (
-          <div className="px-6 py-12 text-center text-gray-400 text-sm">
-            Cargando socios...
-          </div>
+          <div className="px-6 py-12 text-center text-gray-400 text-sm">Cargando socios...</div>
         ) : sociosFiltrados.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-500 text-sm">
-            No hay socios registrados.
-          </div>
+          <div className="px-6 py-12 text-center text-gray-500 text-sm">No hay socios registrados.</div>
         ) : (
           <>
             <div className="hidden md:block overflow-x-auto">
@@ -1193,10 +1017,7 @@ const Socios = () => {
                     <th className="px-4 py-3 font-medium w-10">
                       <input
                         type="checkbox"
-                        checked={
-                          socios.length > 0 &&
-                          selectedSocios.length === socios.length
-                        }
+                        checked={socios.length > 0 && selectedSocios.length === socios.length}
                         onChange={toggleSelectAll}
                         className="h-4 w-4 rounded border-gray-600 bg-[#0f131a] accent-yellow-400"
                       />
@@ -1211,19 +1032,11 @@ const Socios = () => {
                     <th className="px-4 py-3 font-medium">Acciones</th>
                   </tr>
                 </thead>
-
                 <tbody className="divide-y divide-gray-800">
                   {paginatedSocios.map((socio, idx) => {
-                    const cantidadDependientes =
-                      dependientesPorTitular[socio.id_socio] || 0;
-
+                    const cantidadDependientes = dependientesPorTitular[socio.id_socio] || 0;
                     return (
-                      <tr
-                        key={socio.id_socio}
-                        className={`transition-colors ${
-                          idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"
-                        } hover:bg-gray-800/30`}
-                      >
+                      <tr key={socio.id_socio} className={`transition-colors ${idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"} hover:bg-gray-800/30`}>
                         <td className="px-4 py-3 text-sm text-gray-300">
                           <input
                             type="checkbox"
@@ -1232,45 +1045,20 @@ const Socios = () => {
                             className="h-4 w-4 rounded border-gray-600 bg-[#0f131a] accent-yellow-400"
                           />
                         </td>
-
-                        <td className="px-4 py-3 text-sm text-gray-300">
-                          {socio.id_socio}
-                        </td>
-
-                        <td className="px-4 py-3 text-sm font-semibold text-white">
-                          {socio.nombre}
-                        </td>
-
-                        <td className="px-4 py-3 text-sm text-gray-400">
-                          {socio.apellidos}
-                        </td>
-
-                        <td className="px-4 py-3 text-sm text-gray-400">
-                          {socio.tipo_membresia}
-                        </td>
-
-                        <td className="px-4 py-3 text-sm text-gray-400">
-                          {socio.modalidad}
-                        </td>
-
+                        <td className="px-4 py-3 text-sm text-gray-300">{socio.id_socio}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-white">{socio.nombre}</td>
+                        <td className="px-4 py-3 text-sm text-gray-400">{socio.apellidos}</td>
+                        <td className="px-4 py-3 text-sm text-gray-400">{socio.tipo_membresia}</td>
+                        <td className="px-4 py-3 text-sm text-gray-400">{socio.modalidad}</td>
                         <td className="px-4 py-3">
-                          <span
-                            className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(
-                              socio.estatus_financiero
-                            )}`}
-                          >
+                          <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(socio.estatus_financiero)}`}>
                             {socio.estatus_financiero}
                           </span>
                         </td>
-
                         <td className="px-4 py-3 text-sm">
                           {cantidadDependientes > 0 ? (
-                            <button
-                              onClick={() =>
-                                handleVerDependientes(socio.id_socio)
-                              }
-                              className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-violet-500/20 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition flex items-center gap-1 w-max"
-                            >
+                            <button onClick={() => handleVerDependientes(socio.id_socio)}
+                              className="px-2.5 py-1 rounded-md text-[11px] font-bold border border-violet-500/20 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 transition flex items-center gap-1 w-max">
                               <UserRoundSearch size={12} />
                               {cantidadDependientes}
                             </button>
@@ -1278,32 +1066,16 @@ const Socios = () => {
                             <span className="text-gray-600 text-xs">—</span>
                           )}
                         </td>
-
                         <td className="px-4 py-3">
                           <button
                             onClick={(e) => {
-                              const rect =
-                                e.currentTarget.getBoundingClientRect();
-
-                              setMenuPos({
-                                top: rect.bottom + 8,
-                                left: rect.right - 208,
-                              });
-
-                              setActiveMenu(
-                                activeMenu === socio.id_socio
-                                  ? null
-                                  : socio.id_socio
-                              );
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setMenuPos({ top: rect.bottom + 8, left: rect.right - 208 });
+                              setActiveMenu(activeMenu === socio.id_socio ? null : socio.id_socio);
                             }}
                             className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition"
                           >
-                            <svg
-                              width="18"
-                              height="18"
-                              fill="currentColor"
-                              viewBox="0 0 16 16"
-                            >
+                            <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                               <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
                             </svg>
                           </button>
@@ -1317,14 +1089,9 @@ const Socios = () => {
 
             <div className="md:hidden divide-y divide-gray-800">
               {paginatedSocios.map((socio) => {
-                const cantidadDependientes =
-                  dependientesPorTitular[socio.id_socio] || 0;
-
+                const cantidadDependientes = dependientesPorTitular[socio.id_socio] || 0;
                 return (
-                  <div
-                    key={socio.id_socio}
-                    className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors"
-                  >
+                  <div key={socio.id_socio} className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors">
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
@@ -1334,70 +1101,36 @@ const Socios = () => {
                             onChange={() => toggleSelectSocio(socio.id_socio)}
                             className="h-4 w-4 rounded border-gray-600 bg-[#0f131a] accent-yellow-400"
                           />
-                          <h3 className="font-semibold text-sm text-white">
-                            {socio.nombre} {socio.apellidos}
-                          </h3>
+                          <h3 className="font-semibold text-sm text-white">{socio.nombre} {socio.apellidos}</h3>
                         </div>
-
-                        <p className="text-xs text-gray-500 ml-6">
-                          ID: {socio.id_socio}
-                        </p>
+                        <p className="text-xs text-gray-500 ml-6">ID: {socio.id_socio}</p>
                       </div>
-
-                      <span
-                        className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(
-                          socio.estatus_financiero
-                        )}`}
-                      >
+                      <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(socio.estatus_financiero)}`}>
                         {socio.estatus_financiero}
                       </span>
                     </div>
-
                     <div className="flex items-center gap-2 text-xs text-gray-400 ml-6">
                       <span>{socio.tipo_membresia}</span>
                       <span>·</span>
                       <span>{socio.modalidad}</span>
-
                       {cantidadDependientes > 0 && (
                         <>
                           <span>·</span>
-                          <button
-                            onClick={() =>
-                              handleVerDependientes(socio.id_socio)
-                            }
-                            className="text-violet-400 hover:text-violet-300 font-medium"
-                          >
+                          <button onClick={() => handleVerDependientes(socio.id_socio)}
+                            className="text-violet-400 hover:text-violet-300 font-medium">
                             {cantidadDependientes} dep.
                           </button>
                         </>
                       )}
                     </div>
-
                     <div className="flex justify-end ml-6">
-                      <button
-                        onClick={(e) => {
-                          const rect =
-                            e.currentTarget.getBoundingClientRect();
-
-                          setMenuPos({
-                            top: rect.bottom + 8,
-                            left: Math.max(8, rect.right - 192),
-                          });
-
-                          setActiveMenu(
-                            activeMenu === socio.id_socio
-                              ? null
-                              : socio.id_socio
-                          );
+                      <button onClick={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 192) });
+                          setActiveMenu(activeMenu === socio.id_socio ? null : socio.id_socio);
                         }}
-                        className="p-1.5 text-gray-400 hover:bg-gray-800 rounded-full transition"
-                      >
-                        <svg
-                          width="18"
-                          height="18"
-                          fill="currentColor"
-                          viewBox="0 0 16 16"
-                        >
+                        className="p-1.5 text-gray-400 hover:bg-gray-800 rounded-full transition">
+                        <svg width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
                           <path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z" />
                         </svg>
                       </button>
@@ -1407,128 +1140,66 @@ const Socios = () => {
               })}
             </div>
 
-            <Pagination
-              current={currentPage}
-              total={totalPages}
-              onPageChange={setCurrentPage}
-              count={sociosFiltrados.length}
-              windowSize={windowSize}
-            />
+            <Pagination current={currentPage} total={totalPages} onPageChange={setCurrentPage} count={sociosFiltrados.length} windowSize={windowSize} />
           </>
         )}
       </div>
 
-      {activeMenu &&
-        menuPos &&
-        createPortal(
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => {
-                setActiveMenu(null);
-                setMenuPos(null);
-              }}
-            />
-
-            <div
-              className="fixed z-50 w-52 rounded-xl border border-gray-700 bg-[#1b2130] shadow-xl outline-none"
-              style={{ top: menuPos.top, left: menuPos.left }}
-            >
-              <div className="py-1.5">
-                {(() => {
-                  const socio = sociosFiltrados.find(
-                    (s) => s.id_socio === activeMenu
-                  );
-
-                  if (!socio) return null;
-
-                  return (
-                    <>
-                      <button
-                        onClick={() => {
-                          setViewingSocio(socio);
-                          setShowViewModal(true);
-                          setActiveMenu(null);
-                          setMenuPos(null);
-                        }}
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
-                      >
-                        <UserRoundSearch
-                          size={15}
-                          className="mr-3 text-blue-400"
-                        />
-                        Visualizar Información
+      {activeMenu && menuPos && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => { setActiveMenu(null); setMenuPos(null); }}></div>
+          <div
+            className="fixed z-50 w-52 rounded-xl border border-gray-700 bg-[#1b2130] shadow-xl outline-none"
+            style={{ top: menuPos.top, left: menuPos.left }}
+          >
+            <div className="py-1.5">
+              {(() => {
+                const socio = sociosFiltrados.find(s => s.id_socio === activeMenu);
+                if (!socio) return null;
+                return (
+                  <>
+                    <button onClick={() => { setViewingSocio(socio); setShowViewModal(true); setActiveMenu(null); setMenuPos(null); }}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
+                      <UserRoundSearch size={15} className="mr-3 text-blue-400" />
+                      Visualizar Información
+                    </button>
+                    <button onClick={() => { openEditModal(socio); setActiveMenu(null); setMenuPos(null); }}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
+                      <Pencil size={15} className="mr-3 text-amber-400" />
+                      Editar Socio
+                    </button>
+                    <button onClick={() => { openInvitadoModal(socio); setActiveMenu(null); setMenuPos(null); }}
+                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
+                      <UserPlus size={15} className="mr-3 text-cyan-400" />
+                      Registrar invitado
+                    </button>
+                    {socio.es_titular && socio.modalidad === "Familiar" && (
+                      <button onClick={() => { handleAgregarDependiente(socio.id_socio); setActiveMenu(null); setMenuPos(null); }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
+                        <Users size={15} className="mr-3 text-violet-400" />
+                        Añadir dependiente
                       </button>
-
-                      <button
-                        onClick={() => {
-                          openEditModal(socio);
-                          setActiveMenu(null);
-                          setMenuPos(null);
-                        }}
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
-                      >
-                        <Pencil size={15} className="mr-3 text-amber-400" />
-                        Editar Socio
+                    )}
+                    {socio.estatus_financiero !== "Vigente" && (
+                      <button onClick={() => { handleActivarMembresia(socio.id_socio); setActiveMenu(null); setMenuPos(null); }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
+                        <BadgeCheck size={15} className="mr-3 text-emerald-400" />
+                        Activar Membresía
                       </button>
-
-                      <button
-                        onClick={() => {
-                          openInvitadoModal(socio);
-                          setActiveMenu(null);
-                          setMenuPos(null);
-                        }}
-                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
-                      >
-                        <UserPlus size={15} className="mr-3 text-cyan-400" />
-                        Registrar invitado
-                      </button>
-
-                      {socio.es_titular && socio.modalidad === "Familiar" && (
-                        <button
-                          onClick={() => {
-                            handleAgregarDependiente(socio.id_socio);
-                            setActiveMenu(null);
-                            setMenuPos(null);
-                          }}
-                          className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
-                        >
-                          <Users size={15} className="mr-3 text-violet-400" />
-                          Añadir dependiente
-                        </button>
-                      )}
-
-                      {socio.estatus_financiero !== "Vigente" && (
-                        <button
-                          onClick={() => {
-                            handleActivarMembresia(socio.id_socio);
-                            setActiveMenu(null);
-                            setMenuPos(null);
-                          }}
-                          className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
-                        >
-                          <BadgeCheck
-                            size={15}
-                            className="mr-3 text-emerald-400"
-                          />
-                          Activar Membresía
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
-          </>,
-          document.body
-        )}
+          </div>
+        </>,
+        document.body
+      )}
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 bg-[#14171c] p-6 shadow-2xl">
-            <h2 className="mb-6 text-2xl font-bold text-white">
-              Registrar socio
-            </h2>
+            <h2 className="mb-6 text-2xl font-bold text-white">Registrar socio</h2>
 
             {createError && (
               <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 mb-4">
@@ -1565,25 +1236,13 @@ const Socios = () => {
               </div>
 
               <div>
-                <label
-                  className={`${labelClass} ${
-                    createError.toLowerCase().includes("correo")
-                      ? "text-red-400"
-                      : ""
-                  }`}
-                >
-                  Correo electrónico
-                </label>
+                <label className={`${labelClass} ${createError.toLowerCase().includes('correo') ? 'text-red-400' : ''}`}>Correo electrónico</label>
                 <input
                   type="email"
                   name="correo"
                   value={createFormData.correo}
                   onChange={handleCreateChange}
-                  className={`${fieldBaseClass} ${
-                    createError.toLowerCase().includes("correo")
-                      ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                      : ""
-                  }`}
+                  className={`${fieldBaseClass} ${createError.toLowerCase().includes('correo') ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                   required
                   placeholder="socio@ejemplo.com"
                 />
@@ -1653,13 +1312,14 @@ const Socios = () => {
           </div>
         </div>
       )}
+      {showCheckInModal && (
+        <CheckInModal open={true} onClose={() => setShowCheckInModal(false)} />
+      )}
 
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 bg-[#14171c] p-6 shadow-2xl">
-            <h2 className="mb-6 text-2xl font-bold text-white">
-              Editar socio
-            </h2>
+            <h2 className="mb-6 text-2xl font-bold text-white">Editar socio</h2>
 
             <form
               onSubmit={handleUpdateSocio}
@@ -1779,9 +1439,7 @@ const Socios = () => {
               {showEditVigencia && (
                 <>
                   <div>
-                    <label className={labelClass}>
-                      Fecha inicio vigencia
-                    </label>
+                    <label className={labelClass}>Fecha inicio vigencia</label>
                     <input
                       type="date"
                       name="fecha_inicio_vigencia"
@@ -1825,86 +1483,49 @@ const Socios = () => {
           </div>
         </div>
       )}
-
+      {/* Modal de Visualización Detallada */}
       {showViewModal && viewingSocio && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-gray-800 bg-[#14171c] p-8 shadow-2xl">
             <div className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
               <div>
-                <h2 className="text-2xl font-bold text-white">
-                  Ficha del Socio
-                </h2>
-                <p className="text-sm text-gray-400">
-                  ID: {viewingSocio.id_socio}
-                </p>
+                <h2 className="text-2xl font-bold text-white">Ficha del Socio</h2>
+                <p className="text-sm text-gray-400">ID: {viewingSocio.id_socio}</p>
               </div>
-
-              <button
-                onClick={() => setShowViewModal(false)}
-                className="text-gray-400 hover:text-white transition text-3xl"
-              >
-                &times;
-              </button>
+              <button onClick={() => setShowViewModal(false)} className="text-gray-400 hover:text-white transition text-3xl">&times;</button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Información Personal */}
               <div className="space-y-4 bg-[#0f131a] p-5 rounded-xl border border-gray-800">
                 <h3 className="text-blue-400 font-semibold flex items-center gap-2">
                   <Users size={18} /> Datos Personales
                 </h3>
-
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest">
-                    Nombre Completo
-                  </p>
-                  <p className="text-white font-medium">
-                    {viewingSocio.nombre} {viewingSocio.apellidos}
-                  </p>
-
-                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">
-                    Género
-                  </p>
+                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest">Nombre Completo</p>
+                  <p className="text-white font-medium">{viewingSocio.nombre} {viewingSocio.apellidos}</p>
+                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">Género</p>
                   <p className="text-gray-300">{viewingSocio.genero}</p>
-
-                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">
-                    Fecha de Nacimiento
-                  </p>
-                  <p className="text-gray-300">
-                    {viewingSocio.fecha_nacimiento?.slice(0, 10)}
-                  </p>
+                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">Fecha de Nacimiento</p>
+                  <p className="text-gray-300">{viewingSocio.fecha_nacimiento?.slice(0, 10)}</p>
                 </div>
               </div>
 
+              {/* Detalles de Membresía */}
               <div className="space-y-4 bg-[#0f131a] p-5 rounded-xl border border-gray-800">
                 <h3 className="text-yellow-400 font-semibold flex items-center gap-2">
                   <BadgeCheck size={18} /> Membresía
                 </h3>
-
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest">
-                    Tipo / Modalidad
-                  </p>
-                  <p className="text-white">
-                    {viewingSocio.tipo_membresia} - {viewingSocio.modalidad}
-                  </p>
-
-                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">
-                    Estado Financiero
-                  </p>
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusBadge(
-                      viewingSocio.estatus_financiero
-                    )}`}
-                  >
+                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest">Tipo / Modalidad</p>
+                  <p className="text-white">{viewingSocio.tipo_membresia} - {viewingSocio.modalidad}</p>
+                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">Estado Financiero</p>
+                  <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${getStatusBadge(viewingSocio.estatus_financiero)}`}>
                     {viewingSocio.estatus_financiero}
                   </span>
-
-                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">
-                    Vigencia
-                  </p>
+                  <p className="text-sm text-gray-500 italic uppercase text-[10px] tracking-widest mt-3">Vigencia</p>
                   <p className="text-gray-300 text-sm">
-                    {viewingSocio.fecha_inicio_vigencia?.slice(0, 10)} al{" "}
-                    {viewingSocio.fecha_fin_vigencia?.slice(0, 10) || "N/A"}
+                    {viewingSocio.fecha_inicio_vigencia?.slice(0, 10)} al {viewingSocio.fecha_fin_vigencia?.slice(0, 10) || 'N/A'}
                   </p>
                 </div>
               </div>
@@ -1913,12 +1534,9 @@ const Socios = () => {
                 <h3 className="text-emerald-400 font-semibold flex items-center gap-2 mb-4">
                   <RefreshCcw size={18} /> Historial Asistencias
                 </h3>
-
                 <div className="flex-1 flex flex-col items-center justify-center text-center border border-dashed border-gray-700 rounded-lg p-4">
                   <CircleOff size={32} className="text-gray-700 mb-2" />
-                  <p className="text-xs text-gray-500 font-medium italic">
-                    No se encontraron registros de asistencias recientes.
-                  </p>
+                  <p className="text-xs text-gray-500 font-medium italic">No se encontraron registros de asistencias recientes.</p>
                 </div>
               </div>
             </div>
@@ -1944,21 +1562,11 @@ const Socios = () => {
                   <UserPlus size={24} className="text-cyan-400" />
                   Registrar invitado
                 </h2>
-
                 <p className="mt-1 text-sm text-gray-400">
-                  Invitado de:{" "}
-                  <span className="text-white font-medium">
-                    {invitadoSocioNombre}
-                  </span>
+                  Invitado de: <span className="text-white font-medium">{invitadoSocioNombre}</span>
                 </p>
               </div>
-
-              <button
-                onClick={closeInvitadoModal}
-                className="text-gray-400 hover:text-white transition text-3xl"
-              >
-                &times;
-              </button>
+              <button onClick={closeInvitadoModal} className="text-gray-400 hover:text-white transition text-3xl">&times;</button>
             </div>
 
             {invitadoError && (
@@ -1997,7 +1605,7 @@ const Socios = () => {
               </div>
 
               <div>
-                <label className={labelClass}>Observaciones opcional</label>
+                <label className={labelClass}>Observaciones (opcional)</label>
                 <textarea
                   name="observaciones"
                   value={invitadoFormData.observaciones}
@@ -2011,9 +1619,8 @@ const Socios = () => {
               <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-4 py-3 text-sm text-cyan-300">
                 <p className="font-medium">Nota importante:</p>
                 <p className="text-cyan-400/80 mt-1">
-                  El invitado solo es v&aacute;lido por el d&iacute;a de
-                  registro. El socio puede registrar un m&aacute;ximo de 2
-                  invitados por d&iacute;a.
+                  El invitado solo es v&aacute;lido por el d&iacute;a de registro.
+                  El socio puede registrar un m&aacute;ximo de 2 invitados por d&iacute;a.
                 </p>
               </div>
 
