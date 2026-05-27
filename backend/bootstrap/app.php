@@ -15,7 +15,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'bloquear.sancionado' => \App\Http\Middleware\BloquearSocioSancionado::class,
             'restrict.instructor' => \App\Http\Middleware\RestrictInstructorAccess::class,
+            'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
+
         $middleware->prepend(\App\Http\Middleware\CorsMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

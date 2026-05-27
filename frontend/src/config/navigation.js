@@ -12,7 +12,6 @@ import {
   Puzzle,
 } from "lucide-react";
 
-// Fuente central de navegación
 export const MenuItems = [
   {
     title: "Dashboard",
@@ -25,12 +24,6 @@ export const MenuItems = [
     icon: Puzzle,
     path: "/ludoteca",
     roles: ["admin"],
-  },
-  {
-    title: "Mi Rendimiento",
-    icon: Activity,
-    path: "/dashboard-instructor",
-    roles: ["instructor"],
   },
   {
     title: "Instalaciones",
@@ -82,15 +75,21 @@ export const MenuItems = [
     roles: ["admin"],
   },
   {
+    title: "Torneos",
+    icon: Trophy,
+    path: "/torneos",
+    roles: ["admin"],
+  },
+  {
+    title: "Mi Rendimiento",
+    icon: Activity,
+    path: "/dashboard-instructor",
+    roles: ["instructor"],
+  },
+  {
     title: "Mi Calendario",
     icon: CalendarDays,
     path: "/calendario-instructor",
     roles: ["instructor"],
-  },
-  {
-    title: "Torneos",
-    icon: Trophy,
-    path: "/torneos",
-    roles: ["admin", "instructor"],
   },
 ];
