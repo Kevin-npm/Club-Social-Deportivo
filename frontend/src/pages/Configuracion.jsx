@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
-import {
-  Bell,
-  Shield,
-  Palette,
-  Save,
-  CheckCircle2,
-} from "lucide-react";
+import { Bell, Shield, Palette, Save, CheckCircle2 } from "lucide-react";
 
-import api from "../config/api";
+import API_BASE_URL from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
 const defaultSettings = {
   email_notifications: true,
@@ -19,22 +14,50 @@ const defaultSettings = {
 };
 
 export default function Configuracion() {
-  const [settings, setSettings] = useState(defaultSettings);
+  const { token } = useAuth();
 
+  const [settings, setSettings] = useState(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const authHeaders = {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
+  const jsonAuthHeaders = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+
   useEffect(() => {
-    loadSettings();
-  }, []);
+    if (token) {
+      loadSettings();
+    }
+  }, [token]);
 
   const loadSettings = async () => {
     try {
-      const response = await api.get("/user/settings");
+      setLoading(true);
 
-      if (response.data?.data) {
-        setSettings(response.data.data);
+      const response = await fetch(`${API_BASE_URL}/user/settings`, {
+        method: "GET",
+        headers: authHeaders,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Error al cargar configuración.");
+      }
+
+      if (data?.data) {
+        setSettings({
+          ...defaultSettings,
+          ...data.data,
+        });
       }
     } catch (error) {
       console.error("Error cargando configuración:", error);
@@ -54,14 +77,24 @@ export default function Configuracion() {
     try {
       setSaving(true);
 
-      await api.put("/user/settings", {
-        email_notifications: settings.email_notifications,
-        system_alerts: settings.system_alerts,
-        security_alerts: settings.security_alerts,
-        compact_mode: settings.compact_mode,
-        theme: settings.theme,
-        accent: settings.accent,
+      const response = await fetch(`${API_BASE_URL}/user/settings`, {
+        method: "PUT",
+        headers: jsonAuthHeaders,
+        body: JSON.stringify({
+          email_notifications: settings.email_notifications,
+          system_alerts: settings.system_alerts,
+          security_alerts: settings.security_alerts,
+          compact_mode: settings.compact_mode,
+          theme: settings.theme,
+          accent: settings.accent,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Error al guardar configuración.");
+      }
 
       setSaved(true);
 
@@ -88,13 +121,9 @@ export default function Configuracion() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-semibold text-yellow-400">
-            Preferencias
-          </p>
+          <p className="text-sm font-semibold text-yellow-400">Preferencias</p>
 
-          <h1 className="text-3xl font-bold text-white">
-            Configuración
-          </h1>
+          <h1 className="text-3xl font-bold text-white">Configuración</h1>
 
           <p className="mt-2 text-sm text-gray-400">
             Opciones generales del sistema para el usuario actual.
@@ -107,7 +136,6 @@ export default function Configuracion() {
           className="flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-3 text-sm font-bold text-black hover:bg-yellow-500 disabled:opacity-50"
         >
           <Save size={16} />
-
           {saving ? "Guardando..." : "Guardar cambios"}
         </button>
       </div>
@@ -128,25 +156,19 @@ export default function Configuracion() {
           <ToggleRow
             title="Notificaciones por correo"
             checked={settings.email_notifications}
-            onChange={(value) =>
-              updateSetting("email_notifications", value)
-            }
+            onChange={(value) => updateSetting("email_notifications", value)}
           />
 
           <ToggleRow
             title="Alertas del sistema"
             checked={settings.system_alerts}
-            onChange={(value) =>
-              updateSetting("system_alerts", value)
-            }
+            onChange={(value) => updateSetting("system_alerts", value)}
           />
 
           <ToggleRow
             title="Alertas de seguridad"
             checked={settings.security_alerts}
-            onChange={(value) =>
-              updateSetting("security_alerts", value)
-            }
+            onChange={(value) => updateSetting("security_alerts", value)}
           />
         </ConfigPanel>
 
@@ -158,9 +180,7 @@ export default function Configuracion() {
           <ToggleRow
             title="Modo compacto"
             checked={settings.compact_mode}
-            onChange={(value) =>
-              updateSetting("compact_mode", value)
-            }
+            onChange={(value) => updateSetting("compact_mode", value)}
           />
         </ConfigPanel>
 
@@ -171,9 +191,7 @@ export default function Configuracion() {
         >
           <div className="space-y-4">
             <div>
-              <p className="mb-2 text-sm font-semibold text-white">
-                Tema
-              </p>
+              <p className="mb-2 text-sm font-semibold text-white">Tema</p>
 
               <div className="flex gap-2">
                 <ThemeButton
@@ -222,43 +240,26 @@ export default function Configuracion() {
   );
 }
 
-function ConfigPanel({
-  icon: Icon,
-  title,
-  description,
-  children,
-}) {
+function ConfigPanel({ icon: Icon, title, description, children }) {
   return (
     <div className="rounded-2xl border border-gray-800 bg-[#14171c] p-5">
       <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-yellow-400/10">
         <Icon className="text-yellow-400" size={24} />
       </div>
 
-      <h2 className="text-lg font-bold text-white">
-        {title}
-      </h2>
+      <h2 className="text-lg font-bold text-white">{title}</h2>
 
-      <p className="mt-2 text-sm text-gray-400">
-        {description}
-      </p>
+      <p className="mt-2 text-sm text-gray-400">{description}</p>
 
-      <div className="mt-5 space-y-4">
-        {children}
-      </div>
+      <div className="mt-5 space-y-4">{children}</div>
     </div>
   );
 }
 
-function ToggleRow({
-  title,
-  checked,
-  onChange,
-}) {
+function ToggleRow({ title, checked, onChange }) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-gray-800 bg-[#0f131a] p-4">
-      <p className="text-sm font-medium text-white">
-        {title}
-      </p>
+      <p className="text-sm font-medium text-white">{title}</p>
 
       <button
         type="button"
@@ -277,11 +278,7 @@ function ToggleRow({
   );
 }
 
-function ThemeButton({
-  active,
-  label,
-  onClick,
-}) {
+function ThemeButton({ active, label, onClick }) {
   return (
     <button
       onClick={onClick}
@@ -296,18 +293,12 @@ function ThemeButton({
   );
 }
 
-function AccentButton({
-  color,
-  active,
-  onClick,
-}) {
+function AccentButton({ color, active, onClick }) {
   return (
     <button
       onClick={onClick}
       className={`h-10 w-10 rounded-full border-2 transition ${
-        active
-          ? "border-white scale-110"
-          : "border-transparent"
+        active ? "border-white scale-110" : "border-transparent"
       } ${color}`}
     />
   );

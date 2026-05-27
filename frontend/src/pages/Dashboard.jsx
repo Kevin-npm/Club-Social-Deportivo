@@ -278,8 +278,8 @@ export default function Dashboard() {
           </div>
 
           {membershipChartData.length ? (
-            <div className="h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="relative h-[320px] min-h-[320px] w-full min-w-0">
+              <ResponsiveContainer width="100%" height={320}>
                 <PieChart>
                   <Pie
                     data={membershipChartData}
@@ -324,8 +324,8 @@ export default function Dashboard() {
             </p>
           </div>
 
-          <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="relative h-[320px] min-h-[320px] w-full min-w-0">
+            <ResponsiveContainer width="100%" height={320}>
               <BarChart data={reservationChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                 <XAxis dataKey="name" stroke="#9ca3af" />

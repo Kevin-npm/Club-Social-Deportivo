@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Trophy,
   MapPin,
@@ -16,12 +16,45 @@ import {
   Crown,
   AlertTriangle,
 } from "lucide-react";
-import { useRoleSimulator } from "../context/RoleSimulatorContext";
 
-const API_URL = "http://127.0.0.1:8000/api/torneos";
+import API_BASE_URL from "../config/api";
+import { useAuth } from "../context/AuthContext";
+
+const API_TORNEOS = `${API_BASE_URL}/torneos`;
+const API_INSCRIPCIONES = `${API_BASE_URL}/inscripciones`;
+const API_ENCUENTROS = `${API_BASE_URL}/encuentros`;
+
+const estadoInicial = {
+  nombre_torneo: "",
+  categoria: "Libre",
+  sede_principal: "",
+  id_disciplina: "",
+  tipo_bracket: "",
+  tipo: "Local",
+  fecha_inicio: "",
+  fecha_fin: "",
+};
 
 const Torneos = () => {
-  const { isAdmin } = useRoleSimulator();
+  const { token, user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const authHeaders = useMemo(
+    () => ({
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token]
+  );
+
+  const authJsonHeaders = useMemo(
+    () => ({
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token]
+  );
 
   const [torneos, setTorneos] = useState([]);
   const [instalaciones, setInstalaciones] = useState([]);
@@ -39,7 +72,7 @@ const Torneos = () => {
 
   const [modalLlaves, setModalLlaves] = useState(false);
   const [llavesData, setLlavesData] = useState([]);
-  const [pestanaActiva, setPestañaActiva] = useState("grupos");
+  const [pestanaActiva, setPestanaActiva] = useState("grupos");
   const [scores, setScores] = useState({});
   const [alerta, setAlerta] = useState(null);
 
@@ -49,18 +82,17 @@ const Torneos = () => {
     onConfirm: null,
   });
 
-  const estadoInicial = {
-    nombre_torneo: "",
-    categoria: "Libre",
-    sede_principal: "",
-    id_disciplina: "",
-    tipo_bracket: "",
-    tipo: "Local",
-    fecha_inicio: "",
-    fecha_fin: "",
-  };
-
   const [formData, setFormData] = useState(estadoInicial);
+
+  const parseJsonResponse = async (response) => {
+    const text = await response.text();
+
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(`El servidor no respondió con JSON válido. HTTP ${response.status}`);
+    }
+  };
 
   const mostrarAlerta = (msg, tipo = "error") => {
     setAlerta({ msg, tipo });
@@ -71,35 +103,49 @@ const Torneos = () => {
     setConfirmDialog({ visible: true, mensaje, onConfirm: accion });
   };
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
+    if (!token) return;
+
     setCargando(true);
 
     try {
-      const resInst = await fetch("http://127.0.0.1:8000/api/instalaciones");
-      if (resInst.ok) {
-        const dataInst = await resInst.json();
-        setInstalaciones(dataInst.data || []);
+      const [resInst, resTorneos] = await Promise.all([
+        fetch(`${API_BASE_URL}/instalaciones`, {
+          headers: authHeaders,
+        }),
+        fetch(API_TORNEOS, {
+          headers: authHeaders,
+        }),
+      ]);
+
+      const dataInst = await parseJsonResponse(resInst);
+      const dataTorneos = await parseJsonResponse(resTorneos);
+
+      if (!resInst.ok) {
+        throw new Error(dataInst.message || "No se pudieron cargar las instalaciones.");
       }
 
-      const resTorneos = await fetch(API_URL);
-      if (resTorneos.ok) {
-        const dataTorneos = await resTorneos.json();
-        setTorneos(dataTorneos.data || []);
+      if (!resTorneos.ok) {
+        throw new Error(dataTorneos.message || "No se pudieron cargar los torneos.");
       }
+
+      setInstalaciones(dataInst.data || []);
+      setTorneos(dataTorneos.data || []);
     } catch (error) {
       console.error(error);
-      mostrarAlerta("Error al cargar torneos");
+      mostrarAlerta(error.message || "Error al cargar torneos");
     } finally {
       setCargando(false);
     }
-  };
+  }, [token, authHeaders]);
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [cargarDatos]);
 
   const abrirParaCrear = () => {
     if (!isAdmin) return;
+
     setFormData(estadoInicial);
     setModoEdicion(false);
     setModalFormulario(true);
@@ -107,7 +153,19 @@ const Torneos = () => {
 
   const abrirParaEditar = (torneo) => {
     if (!isAdmin) return;
-    setFormData(torneo);
+
+    setFormData({
+      nombre_torneo: torneo.nombre_torneo || "",
+      categoria: torneo.categoria || "Libre",
+      sede_principal: torneo.sede_principal || torneo.id_espacio || "",
+      id_disciplina: torneo.id_disciplina || "",
+      tipo_bracket: torneo.tipo_bracket || "",
+      tipo: torneo.tipo || "Local",
+      fecha_inicio: torneo.fecha_inicio || "",
+      fecha_fin: torneo.fecha_fin || "",
+      id_torneo: torneo.id_torneo,
+    });
+
     setModoEdicion(true);
     setModalFormulario(true);
   };
@@ -119,19 +177,16 @@ const Torneos = () => {
 
     const method = modoEdicion ? "PUT" : "POST";
     const idTorneo = formData.id_torneo || formData.id;
-    const url = modoEdicion ? `${API_URL}/${idTorneo}` : API_URL;
+    const url = modoEdicion ? `${API_TORNEOS}/${idTorneo}` : API_TORNEOS;
 
     try {
       const response = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: authJsonHeaders,
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
 
       if (!response.ok) {
         mostrarAlerta(data.message || "Error al guardar torneo");
@@ -139,14 +194,11 @@ const Torneos = () => {
       }
 
       setModalFormulario(false);
-      mostrarAlerta(
-        modoEdicion ? "Torneo actualizado" : "Torneo guardado",
-        "success"
-      );
-      cargarDatos();
+      mostrarAlerta(modoEdicion ? "Torneo actualizado" : "Torneo guardado", "success");
+      await cargarDatos();
     } catch (error) {
       console.error(error);
-      mostrarAlerta("Error de conexión");
+      mostrarAlerta(error.message || "Error de conexión");
     }
   };
 
@@ -157,12 +209,23 @@ const Torneos = () => {
       "¿Estás seguro de eliminar todo este torneo y sus registros?",
       async () => {
         try {
-          await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+          const response = await fetch(`${API_TORNEOS}/${id}`, {
+            method: "DELETE",
+            headers: authHeaders,
+          });
+
+          const data = await parseJsonResponse(response);
+
+          if (!response.ok) {
+            mostrarAlerta(data.message || "Error al eliminar torneo");
+            return;
+          }
+
           mostrarAlerta("Torneo eliminado", "success");
-          cargarDatos();
+          await cargarDatos();
         } catch (error) {
           console.error(error);
-          mostrarAlerta("Error al eliminar torneo");
+          mostrarAlerta(error.message || "Error al eliminar torneo");
         }
       }
     );
@@ -170,12 +233,21 @@ const Torneos = () => {
 
   const recargarInscritos = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/${id}/inscripciones`);
-      const data = await response.json();
+      const response = await fetch(`${API_TORNEOS}/${id}/inscripciones`, {
+        headers: authHeaders,
+      });
+
+      const data = await parseJsonResponse(response);
+
+      if (!response.ok) {
+        mostrarAlerta(data.message || "Error al cargar inscritos");
+        return;
+      }
+
       setInscritosLista(data.data || []);
     } catch (error) {
       console.error(error);
-      mostrarAlerta("Error al cargar inscritos");
+      mostrarAlerta(error.message || "Error al cargar inscritos");
     }
   };
 
@@ -192,19 +264,19 @@ const Torneos = () => {
     if (!equipoAInscribir) return;
 
     const url = editandoInscritoId
-      ? `http://127.0.0.1:8000/api/inscripciones/${editandoInscritoId}`
-      : `${API_URL}/${torneoActivoId}/inscribir`;
+      ? `${API_INSCRIPCIONES}/${editandoInscritoId}`
+      : `${API_TORNEOS}/${torneoActivoId}/inscribir`;
 
     const method = editandoInscritoId ? "PUT" : "POST";
 
     try {
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: authJsonHeaders,
         body: JSON.stringify({ nombre_equipo: equipoAInscribir }),
       });
 
-      const data = await response.json();
+      const data = await parseJsonResponse(response);
 
       if (!response.ok) {
         mostrarAlerta(data.message || "No se pudo procesar la inscripción");
@@ -213,8 +285,8 @@ const Torneos = () => {
 
       setEquipoAInscribir("");
       setEditandoInscritoId(null);
-      recargarInscritos(torneoActivoId);
-      cargarDatos();
+      await recargarInscritos(torneoActivoId);
+      await cargarDatos();
 
       mostrarAlerta(
         editandoInscritoId ? "Editado con éxito" : "Inscrito con éxito",
@@ -222,32 +294,46 @@ const Torneos = () => {
       );
     } catch (error) {
       console.error(error);
-      mostrarAlerta("Error de conexión");
+      mostrarAlerta(error.message || "Error de conexión");
     }
   };
 
   const eliminarInscrito = (id) => {
     pedirConfirmacion("¿Dar de baja a este equipo del torneo?", async () => {
       try {
-        await fetch(`http://127.0.0.1:8000/api/inscripciones/${id}`, {
+        const response = await fetch(`${API_INSCRIPCIONES}/${id}`, {
           method: "DELETE",
+          headers: authHeaders,
         });
 
-        recargarInscritos(torneoActivoId);
-        cargarDatos();
+        const data = await parseJsonResponse(response);
+
+        if (!response.ok) {
+          mostrarAlerta(data.message || "Error al eliminar inscripción");
+          return;
+        }
+
+        await recargarInscritos(torneoActivoId);
+        await cargarDatos();
         mostrarAlerta("Equipo dado de baja", "success");
       } catch (error) {
         console.error(error);
-        mostrarAlerta("Error al eliminar inscripción");
+        mostrarAlerta(error.message || "Error al eliminar inscripción");
       }
     });
   };
 
   const recargarLlavesSilencioso = async (id) => {
     try {
-      const response = await fetch(`${API_URL}/${id}/llaves`);
-      const data = await response.json();
-      setLlavesData(data.data || []);
+      const response = await fetch(`${API_TORNEOS}/${id}/llaves`, {
+        headers: authHeaders,
+      });
+
+      const data = await parseJsonResponse(response);
+
+      if (response.ok) {
+        setLlavesData(data.data || []);
+      }
     } catch (error) {
       console.error(error);
     }
@@ -258,11 +344,12 @@ const Torneos = () => {
       "Generar sorteo borrará el fixture actual y lo hará aleatoriamente. ¿Continuar?",
       async () => {
         try {
-          const response = await fetch(`${API_URL}/${torneoActivoId}/sorteo`, {
+          const response = await fetch(`${API_TORNEOS}/${torneoActivoId}/sorteo`, {
             method: "POST",
+            headers: authHeaders,
           });
 
-          const data = await response.json();
+          const data = await parseJsonResponse(response);
 
           if (!response.ok) {
             mostrarAlerta(data.message || "No se pudo generar el sorteo");
@@ -270,10 +357,10 @@ const Torneos = () => {
           }
 
           mostrarAlerta("Sorteo generado", "success");
-          recargarLlavesSilencioso(torneoActivoId);
+          await recargarLlavesSilencioso(torneoActivoId);
         } catch (error) {
           console.error(error);
-          mostrarAlerta("Error en el servidor");
+          mostrarAlerta(error.message || "Error en el servidor");
         }
       }
     );
@@ -283,8 +370,16 @@ const Torneos = () => {
     setTorneoActivoId(idTorneo);
 
     try {
-      const response = await fetch(`${API_URL}/${idTorneo}/llaves`);
-      const data = await response.json();
+      const response = await fetch(`${API_TORNEOS}/${idTorneo}/llaves`, {
+        headers: authHeaders,
+      });
+
+      const data = await parseJsonResponse(response);
+
+      if (!response.ok) {
+        mostrarAlerta(data.message || "Error al cargar fixture");
+        return;
+      }
 
       if (!data.data || data.data.length === 0) {
         mostrarAlerta("Fixture vacío. Genera el sorteo en Inscritos / Sorteo.");
@@ -292,28 +387,26 @@ const Torneos = () => {
       }
 
       setLlavesData(data.data);
-      setPestañaActiva(
-        data.data.some((m) => m.fase.includes("Grupo"))
-          ? "grupos"
-          : "eliminatorias"
+      setPestanaActiva(
+        data.data.some((m) => m.fase?.includes("Grupo")) ? "grupos" : "eliminatorias"
       );
       setModalLlaves(true);
     } catch (error) {
       console.error(error);
-      mostrarAlerta("Error al cargar fixture");
+      mostrarAlerta(error.message || "Error al cargar fixture");
     }
   };
 
   const handleInputGoles = (idEncuentro, equipo, valor) => {
-    const num = valor === "" ? "" : Math.max(0, parseInt(valor) || 0);
+    const num = valor === "" ? "" : Math.max(0, parseInt(valor, 10) || 0);
 
-    setScores({
-      ...scores,
+    setScores((prev) => ({
+      ...prev,
       [idEncuentro]: {
-        ...scores[idEncuentro],
+        ...prev[idEncuentro],
         [equipo]: num,
       },
-    });
+    }));
   };
 
   const guardarMarcador = async (partido) => {
@@ -321,32 +414,28 @@ const Torneos = () => {
 
     const goles1 =
       score.g1 !== undefined && score.g1 !== ""
-        ? parseInt(score.g1)
+        ? parseInt(score.g1, 10)
         : partido.goles_1 !== null
         ? partido.goles_1
         : 0;
 
     const goles2 =
       score.g2 !== undefined && score.g2 !== ""
-        ? parseInt(score.g2)
+        ? parseInt(score.g2, 10)
         : partido.goles_2 !== null
         ? partido.goles_2
         : 0;
 
     const penales1 =
-      score.p1 !== undefined && score.p1 !== ""
-        ? parseInt(score.p1)
-        : partido.penales_1;
+      score.p1 !== undefined && score.p1 !== "" ? parseInt(score.p1, 10) : partido.penales_1;
 
     const penales2 =
-      score.p2 !== undefined && score.p2 !== ""
-        ? parseInt(score.p2)
-        : partido.penales_2;
+      score.p2 !== undefined && score.p2 !== "" ? parseInt(score.p2, 10) : partido.penales_2;
 
     try {
-      await fetch(`http://127.0.0.1:8000/api/encuentros/${partido.id}/marcador`, {
+      const response = await fetch(`${API_ENCUENTROS}/${partido.id}/marcador`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authJsonHeaders,
         body: JSON.stringify({
           goles_1: goles1,
           goles_2: goles2,
@@ -355,11 +444,18 @@ const Torneos = () => {
         }),
       });
 
-      recargarLlavesSilencioso(torneoActivoId);
+      const data = await parseJsonResponse(response);
+
+      if (!response.ok) {
+        mostrarAlerta(data.message || "Error al guardar marcador");
+        return;
+      }
+
+      await recargarLlavesSilencioso(torneoActivoId);
       mostrarAlerta("Marcador guardado", "success");
     } catch (error) {
       console.error(error);
-      mostrarAlerta("Error al guardar marcador");
+      mostrarAlerta(error.message || "Error al guardar marcador");
     }
   };
 
@@ -367,7 +463,7 @@ const Torneos = () => {
 
   llavesData.forEach((partido) => {
     if (
-      partido.fase.includes("Grupo") &&
+      partido.fase?.includes("Grupo") &&
       partido.participante_1 !== "Libre" &&
       partido.participante_2 !== "Libre"
     ) {
@@ -392,14 +488,14 @@ const Torneos = () => {
       }
 
       if (partido.jugado) {
-        standings[partido.fase][partido.participante_1].pj++;
-        standings[partido.fase][partido.participante_2].pj++;
+        standings[partido.fase][partido.participante_1].pj += 1;
+        standings[partido.fase][partido.participante_2].pj += 1;
 
-        standings[partido.fase][partido.participante_1].gf += partido.goles_1;
-        standings[partido.fase][partido.participante_1].gc += partido.goles_2;
+        standings[partido.fase][partido.participante_1].gf += partido.goles_1 || 0;
+        standings[partido.fase][partido.participante_1].gc += partido.goles_2 || 0;
 
-        standings[partido.fase][partido.participante_2].gf += partido.goles_2;
-        standings[partido.fase][partido.participante_2].gc += partido.goles_1;
+        standings[partido.fase][partido.participante_2].gf += partido.goles_2 || 0;
+        standings[partido.fase][partido.participante_2].gc += partido.goles_1 || 0;
 
         if (partido.goles_1 > partido.goles_2) {
           standings[partido.fase][partido.participante_1].pts += 3;
@@ -420,34 +516,37 @@ const Torneos = () => {
         const clasificados = [];
 
         Object.keys(standings).forEach((grupo) => {
-          const equipos = Object.entries(standings[grupo]).map(
-            ([nombre, stats]) => ({
-              nombre,
-              ...stats,
-            })
-          );
+          const equipos = Object.entries(standings[grupo]).map(([nombre, stats]) => ({
+            nombre,
+            ...stats,
+          }));
 
-          equipos.sort(
-            (a, b) => b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc)
-          );
+          equipos.sort((a, b) => b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc));
 
           if (equipos[0]) clasificados.push(equipos[0].nombre);
           if (equipos[1]) clasificados.push(equipos[1].nombre);
         });
 
         try {
-          await fetch(`${API_URL}/${torneoActivoId}/clasificar`, {
+          const response = await fetch(`${API_TORNEOS}/${torneoActivoId}/clasificar`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: authJsonHeaders,
             body: JSON.stringify({ clasificados }),
           });
 
-          recargarLlavesSilencioso(torneoActivoId);
-          setPestañaActiva("eliminatorias");
+          const data = await parseJsonResponse(response);
+
+          if (!response.ok) {
+            mostrarAlerta(data.message || "Error al generar fase final");
+            return;
+          }
+
+          await recargarLlavesSilencioso(torneoActivoId);
+          setPestanaActiva("eliminatorias");
           mostrarAlerta("Fase final generada", "success");
         } catch (error) {
           console.error(error);
-          mostrarAlerta("Error al generar fase final");
+          mostrarAlerta(error.message || "Error al generar fase final");
         }
       }
     );
@@ -481,11 +580,7 @@ const Torneos = () => {
                 : "bg-red-600 border-red-400"
             }`}
           >
-            {alerta.tipo === "success" ? (
-              <CheckCircle size={20} />
-            ) : (
-              <AlertCircle size={20} />
-            )}
+            {alerta.tipo === "success" ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
             {alerta.msg}
           </div>
         </div>
@@ -550,7 +645,7 @@ const Torneos = () => {
 
       {cargando ? (
         <div className="flex justify-center mt-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-yellow-400"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-yellow-400" />
         </div>
       ) : torneos.length === 0 ? (
         <div className="text-center py-12 text-gray-500">
@@ -660,9 +755,7 @@ const Torneos = () => {
                 <button
                   type="submit"
                   className={`px-4 rounded-xl font-bold text-white shadow-lg ${
-                    editandoInscritoId
-                      ? "bg-orange-500"
-                      : "bg-yellow-500 text-black"
+                    editandoInscritoId ? "bg-orange-500" : "bg-yellow-500 text-black"
                   }`}
                 >
                   {editandoInscritoId ? <Save size={20} /> : <Plus size={20} />}
@@ -688,36 +781,42 @@ const Torneos = () => {
                 Equipos Inscritos ({inscritosLista.length})
               </h3>
 
-              {inscritosLista.map((equipo, index) => (
-                <div
-                  key={equipo.id_participante}
-                  className="flex justify-between items-center p-3 hover:bg-gray-800/50 rounded-lg group"
-                >
-                  <span className="font-bold text-gray-300 text-sm">
-                    <span className="text-gray-600 mr-2">{index + 1}.</span>
-                    {equipo.nombre_externo}
-                  </span>
-
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => {
-                        setEditandoInscritoId(equipo.id_participante);
-                        setEquipoAInscribir(equipo.nombre_externo);
-                      }}
-                      className="text-orange-400 hover:bg-orange-400/20 p-1.5 rounded-md"
-                    >
-                      <Edit size={16} />
-                    </button>
-
-                    <button
-                      onClick={() => eliminarInscrito(equipo.id_participante)}
-                      className="text-red-500 hover:bg-red-500/20 p-1.5 rounded-md"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
+              {inscritosLista.length === 0 ? (
+                <div className="text-center py-8 text-gray-600 text-sm">
+                  No hay equipos inscritos.
                 </div>
-              ))}
+              ) : (
+                inscritosLista.map((equipo, index) => (
+                  <div
+                    key={equipo.id_participante}
+                    className="flex justify-between items-center p-3 hover:bg-gray-800/50 rounded-lg group"
+                  >
+                    <span className="font-bold text-gray-300 text-sm">
+                      <span className="text-gray-600 mr-2">{index + 1}.</span>
+                      {equipo.nombre_externo}
+                    </span>
+
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => {
+                          setEditandoInscritoId(equipo.id_participante);
+                          setEquipoAInscribir(equipo.nombre_externo);
+                        }}
+                        className="text-orange-400 hover:bg-orange-400/20 p-1.5 rounded-md"
+                      >
+                        <Edit size={16} />
+                      </button>
+
+                      <button
+                        onClick={() => eliminarInscrito(equipo.id_participante)}
+                        className="text-red-500 hover:bg-red-500/20 p-1.5 rounded-md"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             {isAdmin && (
@@ -739,7 +838,7 @@ const Torneos = () => {
             <div className="p-4 border-b border-gray-800 bg-[#0a0c10] flex justify-between items-center">
               <div className="flex gap-4">
                 <button
-                  onClick={() => setPestañaActiva("grupos")}
+                  onClick={() => setPestanaActiva("grupos")}
                   className={`font-black text-lg px-4 py-2 border-b-2 transition-all ${
                     pestanaActiva === "grupos"
                       ? "border-yellow-400 text-yellow-400"
@@ -750,7 +849,7 @@ const Torneos = () => {
                 </button>
 
                 <button
-                  onClick={() => setPestañaActiva("eliminatorias")}
+                  onClick={() => setPestanaActiva("eliminatorias")}
                   className={`font-black text-lg px-4 py-2 border-b-2 transition-all ${
                     pestanaActiva === "eliminatorias"
                       ? "border-yellow-400 text-yellow-400"
@@ -778,60 +877,63 @@ const Torneos = () => {
                       Clasificación
                     </h3>
 
-                    {Object.keys(standings).map((grupo) => {
-                      const equipos = Object.entries(standings[grupo])
-                        .map(([nombre, stats]) => ({ nombre, ...stats }))
-                        .sort(
-                          (a, b) =>
-                            b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc)
-                        );
+                    {Object.keys(standings).length === 0 ? (
+                      <div className="text-gray-600 text-sm">
+                        No hay clasificación disponible.
+                      </div>
+                    ) : (
+                      Object.keys(standings).map((grupo) => {
+                        const equipos = Object.entries(standings[grupo])
+                          .map(([nombre, stats]) => ({ nombre, ...stats }))
+                          .sort((a, b) => b.pts - a.pts || b.gf - b.gc - (a.gf - a.gc));
 
-                      return (
-                        <div
-                          key={grupo}
-                          className="mb-6 bg-[#13161c] rounded-xl border border-gray-800 overflow-hidden shadow-lg"
-                        >
-                          <div className="bg-gray-800/50 py-2 px-4 font-black text-yellow-400 text-sm uppercase tracking-widest">
-                            {grupo}
-                          </div>
+                        return (
+                          <div
+                            key={grupo}
+                            className="mb-6 bg-[#13161c] rounded-xl border border-gray-800 overflow-hidden shadow-lg"
+                          >
+                            <div className="bg-gray-800/50 py-2 px-4 font-black text-yellow-400 text-sm uppercase tracking-widest">
+                              {grupo}
+                            </div>
 
-                          <table className="w-full text-sm text-left">
-                            <thead className="text-gray-500 text-xs bg-[#0a0c10] border-b border-gray-800">
-                              <tr>
-                                <th className="px-4 py-2">Eq</th>
-                                <th className="text-center">PJ</th>
-                                <th className="text-center">DIF</th>
-                                <th className="text-center text-white">PTS</th>
-                              </tr>
-                            </thead>
-
-                            <tbody>
-                              {equipos.map((equipo, index) => (
-                                <tr
-                                  key={equipo.nombre}
-                                  className={`border-b border-gray-800/50 ${
-                                    index < 2 ? "bg-green-900/10" : ""
-                                  }`}
-                                >
-                                  <td className="px-4 py-3 font-bold text-gray-200 truncate max-w-[120px]">
-                                    {equipo.nombre}
-                                  </td>
-                                  <td className="text-center text-gray-500">
-                                    {equipo.pj}
-                                  </td>
-                                  <td className="text-center text-gray-500">
-                                    {equipo.gf - equipo.gc}
-                                  </td>
-                                  <td className="text-center font-black text-yellow-400">
-                                    {equipo.pts}
-                                  </td>
+                            <table className="w-full text-sm text-left">
+                              <thead className="text-gray-500 text-xs bg-[#0a0c10] border-b border-gray-800">
+                                <tr>
+                                  <th className="px-4 py-2">Eq</th>
+                                  <th className="text-center">PJ</th>
+                                  <th className="text-center">DIF</th>
+                                  <th className="text-center text-white">PTS</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      );
-                    })}
+                              </thead>
+
+                              <tbody>
+                                {equipos.map((equipo, index) => (
+                                  <tr
+                                    key={equipo.nombre}
+                                    className={`border-b border-gray-800/50 ${
+                                      index < 2 ? "bg-green-900/10" : ""
+                                    }`}
+                                  >
+                                    <td className="px-4 py-3 font-bold text-gray-200 truncate max-w-[120px]">
+                                      {equipo.nombre}
+                                    </td>
+                                    <td className="text-center text-gray-500">
+                                      {equipo.pj}
+                                    </td>
+                                    <td className="text-center text-gray-500">
+                                      {equipo.gf - equipo.gc}
+                                    </td>
+                                    <td className="text-center font-black text-yellow-400">
+                                      {equipo.pts}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        );
+                      })
+                    )}
 
                     {isAdmin && (
                       <button
@@ -855,7 +957,7 @@ const Torneos = () => {
                             .filter(
                               (partido) =>
                                 partido.jornada === jornada &&
-                                partido.fase.includes("Grupo")
+                                partido.fase?.includes("Grupo")
                             )
                             .map((partido) => (
                               <div
@@ -873,17 +975,9 @@ const Torneos = () => {
                                         type="number"
                                         min="0"
                                         className="w-8 bg-transparent text-center text-white font-black text-lg outline-none"
-                                        defaultValue={
-                                          partido.goles_1 !== null
-                                            ? partido.goles_1
-                                            : ""
-                                        }
+                                        defaultValue={partido.goles_1 !== null ? partido.goles_1 : ""}
                                         onChange={(e) =>
-                                          handleInputGoles(
-                                            partido.id,
-                                            "g1",
-                                            e.target.value
-                                          )
+                                          handleInputGoles(partido.id, "g1", e.target.value)
                                         }
                                       />
 
@@ -893,17 +987,9 @@ const Torneos = () => {
                                         type="number"
                                         min="0"
                                         className="w-8 bg-transparent text-center text-white font-black text-lg outline-none"
-                                        defaultValue={
-                                          partido.goles_2 !== null
-                                            ? partido.goles_2
-                                            : ""
-                                        }
+                                        defaultValue={partido.goles_2 !== null ? partido.goles_2 : ""}
                                         onChange={(e) =>
-                                          handleInputGoles(
-                                            partido.id,
-                                            "g2",
-                                            e.target.value
-                                          )
+                                          handleInputGoles(partido.id, "g2", e.target.value)
                                         }
                                       />
 
@@ -938,16 +1024,8 @@ const Torneos = () => {
               {pestanaActiva === "eliminatorias" && (
                 <div className="p-8 h-full min-w-max overflow-auto flex items-start bg-[#0a0c10]">
                   <div className="flex gap-12 justify-start h-full items-start">
-                    {[
-                      "Ronda Preliminar",
-                      "Octavos",
-                      "Cuartos",
-                      "Semifinal",
-                      "Final",
-                    ].map((fase) => {
-                      const partidos = llavesData.filter(
-                        (partido) => partido.fase === fase
-                      );
+                    {["Ronda Preliminar", "Octavos", "Cuartos", "Semifinal", "Final"].map((fase) => {
+                      const partidos = llavesData.filter((partido) => partido.fase === fase);
 
                       if (partidos.length === 0) return null;
 
@@ -970,8 +1048,7 @@ const Torneos = () => {
                               isAdmin &&
                               (scores[partido.id]?.g1 ?? partido.goles_1) ===
                                 (scores[partido.id]?.g2 ?? partido.goles_2) &&
-                              (scores[partido.id]?.g1 !== undefined ||
-                                partido.goles_1 !== null);
+                              (scores[partido.id]?.g1 !== undefined || partido.goles_1 !== null);
 
                             return (
                               <div
@@ -987,17 +1064,9 @@ const Torneos = () => {
                                     <input
                                       type="number"
                                       min="0"
-                                      defaultValue={
-                                        partido.goles_1 !== null
-                                          ? partido.goles_1
-                                          : ""
-                                      }
+                                      defaultValue={partido.goles_1 !== null ? partido.goles_1 : ""}
                                       onChange={(e) =>
-                                        handleInputGoles(
-                                          partido.id,
-                                          "g1",
-                                          e.target.value
-                                        )
+                                        handleInputGoles(partido.id, "g1", e.target.value)
                                       }
                                       className="w-10 bg-black/50 text-center rounded border border-gray-700 text-white font-black outline-none py-1"
                                     />
@@ -1008,7 +1077,7 @@ const Torneos = () => {
                                   )}
                                 </div>
 
-                                <div className="border-b border-gray-800 mb-2"></div>
+                                <div className="border-b border-gray-800 mb-2" />
 
                                 <div className="flex justify-between items-center">
                                   <span className="font-bold truncate w-32 text-gray-300">
@@ -1019,17 +1088,9 @@ const Torneos = () => {
                                     <input
                                       type="number"
                                       min="0"
-                                      defaultValue={
-                                        partido.goles_2 !== null
-                                          ? partido.goles_2
-                                          : ""
-                                      }
+                                      defaultValue={partido.goles_2 !== null ? partido.goles_2 : ""}
                                       onChange={(e) =>
-                                        handleInputGoles(
-                                          partido.id,
-                                          "g2",
-                                          e.target.value
-                                        )
+                                        handleInputGoles(partido.id, "g2", e.target.value)
                                       }
                                       className="w-10 bg-black/50 text-center rounded border border-gray-700 text-white font-black outline-none py-1"
                                     />
@@ -1050,17 +1111,9 @@ const Torneos = () => {
                                       <input
                                         type="number"
                                         min="0"
-                                        defaultValue={
-                                          partido.penales_1 !== null
-                                            ? partido.penales_1
-                                            : ""
-                                        }
+                                        defaultValue={partido.penales_1 !== null ? partido.penales_1 : ""}
                                         onChange={(e) =>
-                                          handleInputGoles(
-                                            partido.id,
-                                            "p1",
-                                            e.target.value
-                                          )
+                                          handleInputGoles(partido.id, "p1", e.target.value)
                                         }
                                         className="w-8 bg-black/50 text-center rounded border border-yellow-400/30 text-yellow-400 font-bold outline-none text-sm"
                                       />
@@ -1070,17 +1123,9 @@ const Torneos = () => {
                                       <input
                                         type="number"
                                         min="0"
-                                        defaultValue={
-                                          partido.penales_2 !== null
-                                            ? partido.penales_2
-                                            : ""
-                                        }
+                                        defaultValue={partido.penales_2 !== null ? partido.penales_2 : ""}
                                         onChange={(e) =>
-                                          handleInputGoles(
-                                            partido.id,
-                                            "p2",
-                                            e.target.value
-                                          )
+                                          handleInputGoles(partido.id, "p2", e.target.value)
                                         }
                                         className="w-8 bg-black/50 text-center rounded border border-yellow-400/30 text-yellow-400 font-bold outline-none text-sm"
                                       />
@@ -1090,14 +1135,13 @@ const Torneos = () => {
 
                                 {!isAdmin && empata && (
                                   <div className="mt-2 text-center text-xs font-bold text-yellow-400 bg-yellow-400/10 rounded py-1 border border-yellow-400/20">
-                                    P: {partido.penales_1} -{" "}
-                                    {partido.penales_2}
+                                    P: {partido.penales_1} - {partido.penales_2}
                                   </div>
                                 )}
 
                                 {isAdmin &&
-                                  !partido.participante_1.includes("TBD") &&
-                                  !partido.participante_2.includes("TBD") && (
+                                  !partido.participante_1?.includes("TBD") &&
+                                  !partido.participante_2?.includes("TBD") && (
                                     <button
                                       onClick={() => guardarMarcador(partido)}
                                       className="absolute -right-3 -top-3 bg-blue-600 p-2.5 rounded-full text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:bg-blue-500 transition-all"
@@ -1174,10 +1218,7 @@ const Torneos = () => {
                 >
                   <option value="">Seleccionar cancha...</option>
                   {instalaciones.map((instalacion) => (
-                    <option
-                      key={instalacion.id_espacio}
-                      value={instalacion.id_espacio}
-                    >
+                    <option key={instalacion.id_espacio} value={instalacion.id_espacio}>
                       {instalacion.nombre_especifico}
                     </option>
                   ))}
@@ -1213,9 +1254,7 @@ const Torneos = () => {
                 >
                   <option value="">Elige formato...</option>
                   <option value="Liga">Liga / Grupos</option>
-                  <option value="Eliminacion directa">
-                    Eliminatoria Directa
-                  </option>
+                  <option value="Eliminacion directa">Eliminatoria Directa</option>
                 </select>
 
                 <div>

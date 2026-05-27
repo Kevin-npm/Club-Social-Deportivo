@@ -34,6 +34,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/confirmar-password', [ConfirmPasswordController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function () {
+
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
@@ -47,16 +48,44 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     | Rutas compartidas autenticadas
     |--------------------------------------------------------------------------
-    | El socio necesita consultar instalaciones para poder reservar.
-    | El admin también las usa desde su panel.
-    | Solo lectura para cualquier usuario autenticado.
     */
+
     Route::get('/instalaciones', [InstalacionesController::class, 'index']);
     Route::get('/instalaciones/{id}', [InstalacionesController::class, 'show']);
     Route::get('/categorias', [InstalacionesController::class, 'getCategories']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Agenda compartida
+    |--------------------------------------------------------------------------
+    | Admin e instructor pueden consultar agenda.
+    */
+
+    Route::get('/agenda/catalogo/disciplinas', [AgendaController::class, 'getDisciplinas']);
+    Route::get('/agenda/catalogo/instructores', [AgendaController::class, 'getInstructores']);
+    Route::get('/agenda', [AgendaController::class, 'index']);
+    Route::get('/agenda/{id}', [AgendaController::class, 'show']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reservas lectura compartida
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/reservas', [ReservasController::class, 'index']);
+    Route::get('/reservas/{id}', [ReservasController::class, 'show']);
 });
 
+
+
+/*
+|--------------------------------------------------------------------------
+| Portal socio
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware(['auth:sanctum', 'role:socio'])->prefix('socio')->group(function () {
+
     Route::get('/perfil', [SocioPortalController::class, 'perfil']);
 
     Route::get('/reservas/disponibilidad', [SocioPortalController::class, 'disponibilidad']);
@@ -77,8 +106,18 @@ Route::middleware(['auth:sanctum', 'role:socio'])->prefix('socio')->group(functi
     Route::get('/ludoteca/mi-status', [LudotecaController::class, 'miStatus']);
 });
 
+
+
+/*
+|--------------------------------------------------------------------------
+| Admin
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
+
     Route::post('/socios/importar', [SocioImportController::class, 'import']);
+
     Route::apiResource('socios', SocioController::class);
 
     Route::patch('/socios/{id}/activar', [SocioController::class, 'activarMembresia']);
@@ -87,80 +126,148 @@ Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/socios/{id}/verificar-acceso', [SocioController::class, 'verificarAcceso']);
 
     Route::apiResource('invitados', InvitadoController::class);
+
     Route::post('/invitados/{id}/marcar-asistencia', [InvitadoController::class, 'marcarAsistencia']);
     Route::get('/socios/{id}/invitados', [InvitadoController::class, 'porSocio']);
     Route::post('/invitados/expirar-antiguos', [InvitadoController::class, 'expirarAntiguos']);
 
     /*
     |--------------------------------------------------------------------------
-    | Administración de instalaciones
+    | Instalaciones
     |--------------------------------------------------------------------------
-    | Lectura: en bloque auth:sanctum compartido.
-    | Escritura: solo admin.
     */
+
     Route::post('/instalaciones', [InstalacionesController::class, 'store']);
     Route::put('/instalaciones/{id}', [InstalacionesController::class, 'update']);
 
-    Route::get('/agenda/catalogo/disciplinas', [AgendaController::class, 'getDisciplinas']);
-    Route::get('/agenda/catalogo/instructores', [AgendaController::class, 'getInstructores']);
-    Route::get('/agenda', [AgendaController::class, 'index']);
-    Route::get('/agenda/{id}', [AgendaController::class, 'show']);
+    /*
+    |--------------------------------------------------------------------------
+    | Agenda escritura admin
+    |--------------------------------------------------------------------------
+    */
+
     Route::post('/agenda', [AgendaController::class, 'store']);
     Route::put('/agenda/{id}', [AgendaController::class, 'update']);
     Route::delete('/agenda/{id}', [AgendaController::class, 'destroy']);
 
-    Route::get('/reservas', [ReservasController::class, 'index']);
-    Route::get('/reservas/{id}', [ReservasController::class, 'show']);
-    Route::post('/reservas', [ReservasController::class, 'store'])->middleware('bloquear.sancionado');
+    /*
+    |--------------------------------------------------------------------------
+    | Reservas escritura admin
+    |--------------------------------------------------------------------------
+    */
+
+    Route::post('/reservas', [ReservasController::class, 'store'])
+        ->middleware('bloquear.sancionado');
+
     Route::put('/reservas/{id}', [ReservasController::class, 'update']);
     Route::delete('/reservas/{id}', [ReservasController::class, 'destroy']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pagos
+    |--------------------------------------------------------------------------
+    */
 
     Route::get('/pagos/metodos', [PagosController::class, 'getMetodos']);
     Route::get('/pagos', [PagosController::class, 'index']);
     Route::get('/pagos/{id}', [PagosController::class, 'show']);
     Route::post('/pagos', [PagosController::class, 'store']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Instructores
+    |--------------------------------------------------------------------------
+    */
+
     Route::apiResource('instructors', InstructorController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Asistencias
+    |--------------------------------------------------------------------------
+    */
 
     Route::get('/asistencias/sesion/{id_sesion}', [AsistenciasController::class, 'porSesion']);
     Route::get('/asistencias', [AsistenciasController::class, 'index']);
     Route::post('/asistencias', [AsistenciasController::class, 'store']);
     Route::delete('/asistencias/{id}', [AsistenciasController::class, 'destroy']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Ludoteca
+    |--------------------------------------------------------------------------
+    */
+
     Route::post('/ludoteca/ingreso', [LudotecaController::class, 'registrarIngreso']);
     Route::post('/ludoteca/salida', [LudotecaController::class, 'registrarSalida']);
     Route::post('/ludoteca/ajustar-tiempo', [LudotecaController::class, 'ajustarTiempo']);
     Route::post('/ludoteca/reset-tiempo', [LudotecaController::class, 'resetTiempo']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Checkin
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/checkins/buscar', [CheckinController::class, 'buscarSocio']);
     Route::get('/checkins', [CheckinController::class, 'index']);
     Route::post('/checkins', [CheckinController::class, 'store']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard admin
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/admin/dashboard/metrics', [AdminDashboardController::class, 'metrics']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Importación / exportación
+    |--------------------------------------------------------------------------
+    */
 
     Route::get('/socios/exportar/csv', [SocioImportController::class, 'exportCsv']);
     Route::get('/socios/plantilla/csv', [SocioImportController::class, 'templateCsv']);
     Route::get('/socios/exportar/pdf', [SocioPdfController::class, 'exportarPdf']);
 
+    /*
+    |--------------------------------------------------------------------------
+    | Torneos
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/torneos', [TorneoController::class, 'index']);
     Route::get('/torneos/{id}/inscripciones', [TorneoController::class, 'getInscripciones']);
+
     Route::post('/torneos/{id}/inscribir', [TorneoController::class, 'inscribir']);
+
     Route::put('/inscripciones/{id}', [TorneoController::class, 'editarInscripcion']);
+
     Route::delete('/inscripciones/{id}', [TorneoController::class, 'eliminarInscripcion']);
+
     Route::post('/torneos/{id}/sorteo', [TorneoController::class, 'generarSorteo']);
+
     Route::get('/torneos/{id}/llaves', [TorneoController::class, 'getLlaves']);
+
     Route::post('/encuentros/{id}/marcador', [TorneoController::class, 'guardarMarcador']);
+
     Route::post('/torneos/{id}/clasificar', [TorneoController::class, 'generarClasificacion']);
+
     Route::apiResource('torneos', TorneoController::class)->except(['index']);
 });
 
-Route::middleware(['auth:sanctum', 'role:instructor'])->group(function () {
-    Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'getMetricas']);
 
-    Route::get('/agenda/catalogo/disciplinas', [AgendaController::class, 'getDisciplinas']);
-    Route::get('/agenda/catalogo/instructores', [AgendaController::class, 'getInstructores']);
-    Route::get('/agenda', [AgendaController::class, 'index']);
-    Route::get('/agenda/{id}', [AgendaController::class, 'show']);
+
+/*
+|--------------------------------------------------------------------------
+| Instructor
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth:sanctum', 'role:instructor'])->group(function () {
+
+    Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'getMetricas']);
 
     Route::get('/asistencias/sesion/{id_sesion}', [AsistenciasController::class, 'porSesion']);
     Route::get('/asistencias', [AsistenciasController::class, 'index']);

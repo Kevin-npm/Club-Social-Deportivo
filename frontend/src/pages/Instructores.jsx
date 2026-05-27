@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
   Users,
@@ -12,10 +12,40 @@ import {
   Ellipsis,
 } from "lucide-react";
 
-const API_URL = "http://localhost:8000/api/instructors";
+import API_BASE_URL from "../config/api";
+import { useAuth } from "../context/AuthContext";
+
+const API_URL = `${API_BASE_URL}/instructors`;
 const ITEMS_PER_PAGE = 10;
 
+const initialFormData = {
+  nombre_completo: "",
+  especialidad: "",
+  contacto: "",
+  id_usuario: 1,
+  estatus: "Activo",
+};
+
 const Instructores = () => {
+  const { token } = useAuth();
+
+  const authHeaders = useMemo(
+    () => ({
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token]
+  );
+
+  const authJsonHeaders = useMemo(
+    () => ({
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token]
+  );
+
   const [instructores, setInstructores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,60 +62,85 @@ const Instructores = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [currentId, setCurrentId] = useState(null);
-  const [formData, setFormData] = useState({
-    nombre_completo: "",
-    especialidad: "",
-    contacto: "",
-    id_usuario: 1,
-    estatus: "Activo",
-  });
+  const [formData, setFormData] = useState(initialFormData);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const check = () => setWindowSize(window.innerWidth < 768 ? 3 : 10);
     check();
+
     window.addEventListener("resize", check);
+
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const fetchInstructores = async () => {
+  const parseJsonResponse = async (response) => {
+    const text = await response.text();
+
     try {
-      const res = await fetch(API_URL, {
-        headers: { Accept: "application/json" },
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.message || "No se pudieron cargar los instructores");
-      }
-      setInstructores(Array.isArray(result) ? result : (result.data || []));
-    } catch (err) {
-      console.error(err);
-      setError("Error al cargar instructores.");
+      return text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error(`El servidor no respondió con JSON válido. HTTP ${response.status}`);
     }
   };
 
-  const cargarTodo = async () => {
+  const fetchInstructores = useCallback(async () => {
+    if (!token) return;
+
+    const res = await fetch(API_URL, {
+      headers: authHeaders,
+    });
+
+    const result = await parseJsonResponse(res);
+
+    if (!res.ok) {
+      throw new Error(result.message || "No se pudieron cargar los instructores");
+    }
+
+    setInstructores(Array.isArray(result) ? result : result.data || []);
+  }, [token, authHeaders]);
+
+  const cargarTodo = useCallback(async () => {
+    if (!token) return;
+
     try {
       setLoading(true);
       setError("");
+
       await fetchInstructores();
+    } catch (err) {
+      console.error(err);
+      setError(err.message || "Error al cargar instructores.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, fetchInstructores]);
 
-  useEffect(() => { cargarTodo(); }, []);
+  useEffect(() => {
+    cargarTodo();
+  }, [cargarTodo]);
 
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, filterEspecialidad, filterEstatus]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterEspecialidad, filterEstatus]);
+
+  const resetForm = useCallback(() => {
+    setFormData(initialFormData);
+    setEditMode(false);
+    setCurrentId(null);
+  }, []);
 
   useEffect(() => {
     const handleOpenModal = () => {
       resetForm();
       setModalOpen(true);
     };
+
     window.addEventListener("abrir-modal-instructor", handleOpenModal);
-    return () => window.removeEventListener("abrir-modal-instructor", handleOpenModal);
-  }, []);
+
+    return () =>
+      window.removeEventListener("abrir-modal-instructor", handleOpenModal);
+  }, [resetForm]);
 
   const especialidadesUnicas = useMemo(() => {
     return [...new Set(instructores.map((ins) => ins.especialidad))].filter(Boolean);
@@ -93,21 +148,31 @@ const Instructores = () => {
 
   const filteredInstructors = useMemo(() => {
     let result = [...instructores];
+
     if (searchTerm) {
       result = result.filter((ins) =>
-        ins.nombre_completo.toLowerCase().includes(searchTerm.toLowerCase()),
+        (ins.nombre_completo || "")
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())
       );
     }
+
     if (filterEspecialidad) {
       result = result.filter((ins) => ins.especialidad === filterEspecialidad);
     }
+
     if (filterEstatus) {
       result = result.filter((ins) => ins.estatus === filterEstatus);
     }
+
     return result;
   }, [instructores, searchTerm, filterEspecialidad, filterEstatus]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredInstructors.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredInstructors.length / ITEMS_PER_PAGE)
+  );
+
   const paginatedInstructors = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredInstructors.slice(start, start + ITEMS_PER_PAGE);
@@ -117,32 +182,23 @@ const Instructores = () => {
     return {
       total: filteredInstructors.length,
       activos: filteredInstructors.filter((i) => i.estatus === "Activo").length,
-      inactivos: filteredInstructors.filter((i) => i.estatus === "Inactivo").length,
+      inactivos: filteredInstructors.filter((i) => i.estatus === "Inactivo")
+        .length,
     };
   }, [filteredInstructors]);
-
-  const resetForm = () => {
-    setFormData({
-      nombre_completo: "",
-      especialidad: "",
-      contacto: "",
-      id_usuario: 1,
-      estatus: "Activo",
-    });
-    setEditMode(false);
-    setCurrentId(null);
-  };
 
   const openEdit = (ins) => {
     setEditMode(true);
     setCurrentId(ins.id_instructor);
+
     setFormData({
-      nombre_completo: ins.nombre_completo,
-      especialidad: ins.especialidad,
+      nombre_completo: ins.nombre_completo || "",
+      especialidad: ins.especialidad || "",
       contacto: ins.contacto || "",
       id_usuario: ins.id_usuario || 1,
       estatus: ins.estatus || "Activo",
     });
+
     setModalOpen(true);
   };
 
@@ -153,6 +209,7 @@ const Instructores = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     try {
       setSaving(true);
       setError("");
@@ -162,14 +219,11 @@ const Instructores = () => {
 
       const res = await fetch(url, {
         method,
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: authJsonHeaders,
         body: JSON.stringify(formData),
       });
 
-      const result = await res.json();
+      const result = await parseJsonResponse(res);
 
       if (!res.ok) {
         throw new Error(result.message || "No se pudo guardar el instructor");
@@ -193,10 +247,10 @@ const Instructores = () => {
 
       const res = await fetch(`${API_URL}/${id}`, {
         method: "DELETE",
-        headers: { Accept: "application/json" },
+        headers: authHeaders,
       });
 
-      const result = await res.json();
+      const result = await parseJsonResponse(res);
 
       if (!res.ok) {
         throw new Error(result.message || "No se pudo eliminar el instructor");
@@ -213,49 +267,75 @@ const Instructores = () => {
     if (status === "Activo") {
       return "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20";
     }
+
     if (status === "Inactivo") {
       return "bg-red-500/15 text-red-400 border border-red-500/20";
     }
+
     return "bg-slate-500/15 text-slate-300 border border-slate-500/20";
   };
 
   const Pagination = ({ current, total, onPageChange, count, winSize = 10 }) => {
     if (total <= 1) return null;
+
     const curWin = Math.ceil(current / winSize);
     const startP = (curWin - 1) * winSize + 1;
     const endP = Math.min(startP + winSize - 1, total);
+
     return (
       <div className="flex items-center justify-between px-4 md:px-5 py-3 border-t border-gray-800">
-        <p className="text-xs text-gray-500">{count} registros — Pág. {current} de {total}</p>
+        <p className="text-xs text-gray-500">
+          {count} registros — Pág. {current} de {total}
+        </p>
+
         <div className="flex items-center gap-1">
-          <button onClick={() => onPageChange(Math.max(1, current - winSize))}
+          <button
+            onClick={() => onPageChange(Math.max(1, current - winSize))}
             disabled={curWin === 1}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-            title="Anterior ventana">
+            title="Anterior ventana"
+          >
             <ChevronsLeft size={16} />
           </button>
-          <button onClick={() => onPageChange(Math.max(1, current - 1))}
+
+          <button
+            onClick={() => onPageChange(Math.max(1, current - 1))}
             disabled={current === 1}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+          >
             <ChevronLeft size={16} />
           </button>
-          {Array.from({ length: endP - startP + 1 }, (_, i) => startP + i).map((page) => (
-            <button key={page} onClick={() => onPageChange(page)}
-              className={`w-7 h-7 rounded-lg text-xs font-medium transition ${
-                page === current
-                  ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/30"
-                  : "text-gray-500 hover:bg-gray-800 hover:text-white"
-              }`}>{page}</button>
-          ))}
-          <button onClick={() => onPageChange(Math.min(total, current + 1))}
+
+          {Array.from({ length: endP - startP + 1 }, (_, i) => startP + i).map(
+            (page) => (
+              <button
+                key={page}
+                onClick={() => onPageChange(page)}
+                className={`w-7 h-7 rounded-lg text-xs font-medium transition ${
+                  page === current
+                    ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/30"
+                    : "text-gray-500 hover:bg-gray-800 hover:text-white"
+                }`}
+              >
+                {page}
+              </button>
+            )
+          )}
+
+          <button
+            onClick={() => onPageChange(Math.min(total, current + 1))}
             disabled={current === total}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+          >
             <ChevronRight size={16} />
           </button>
-          <button onClick={() => onPageChange(Math.min(total, startP + winSize))}
+
+          <button
+            onClick={() => onPageChange(Math.min(total, startP + winSize))}
             disabled={endP === total}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-            title="Siguiente ventana">
+            title="Siguiente ventana"
+          >
             <ChevronsRight size={16} />
           </button>
         </div>
@@ -273,23 +353,37 @@ const Instructores = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-blue-900/30 text-blue-400"><Users size={16} /></div>
+          <div className="p-2 rounded-lg bg-blue-900/30 text-blue-400">
+            <Users size={16} />
+          </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Total Instructores</p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
+              Total Instructores
+            </p>
             <p className="text-lg md:text-xl font-bold">{stats.total}</p>
           </div>
         </div>
+
         <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-emerald-900/30 text-emerald-400"><Users size={16} /></div>
+          <div className="p-2 rounded-lg bg-emerald-900/30 text-emerald-400">
+            <Users size={16} />
+          </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Activos</p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
+              Activos
+            </p>
             <p className="text-lg md:text-xl font-bold">{stats.activos}</p>
           </div>
         </div>
+
         <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-red-900/30 text-red-400"><CircleOff size={16} /></div>
+          <div className="p-2 rounded-lg bg-red-900/30 text-red-400">
+            <CircleOff size={16} />
+          </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Inactivos</p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
+              Inactivos
+            </p>
             <p className="text-lg md:text-xl font-bold">{stats.inactivos}</p>
           </div>
         </div>
@@ -297,10 +391,15 @@ const Instructores = () => {
 
       <div className="bg-[#14171c] rounded-xl border border-gray-800">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 md:p-5 border-b border-gray-800">
-          <h2 className="text-base md:text-lg font-bold text-white">Directorio de instructores</h2>
-          <button onClick={cargarTodo}
+          <h2 className="text-base md:text-lg font-bold text-white">
+            Directorio de instructores
+          </h2>
+
+          <button
+            onClick={cargarTodo}
             className="p-1.5 rounded-lg border border-gray-700 bg-[#0f131a] text-gray-300 hover:border-gray-600 hover:text-white transition w-max"
-            title="Recargar instructores">
+            title="Recargar instructores"
+          >
             <RefreshCcw size={16} />
           </button>
         </div>
@@ -313,6 +412,7 @@ const Instructores = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="rounded-lg border border-gray-700 bg-[#0f131a] px-3 py-2 text-sm text-white outline-none focus:border-yellow-400"
           />
+
           <select
             value={filterEspecialidad}
             onChange={(e) => setFilterEspecialidad(e.target.value)}
@@ -320,9 +420,12 @@ const Instructores = () => {
           >
             <option value="">Todas las Especialidades</option>
             {especialidadesUnicas.map((esp) => (
-              <option key={esp} value={esp}>{esp}</option>
+              <option key={esp} value={esp}>
+                {esp}
+              </option>
             ))}
           </select>
+
           <select
             value={filterEstatus}
             onChange={(e) => setFilterEstatus(e.target.value)}
@@ -335,9 +438,13 @@ const Instructores = () => {
         </div>
 
         {loading ? (
-          <div className="px-6 py-12 text-center text-gray-400 text-sm">Cargando instructores...</div>
+          <div className="px-6 py-12 text-center text-gray-400 text-sm">
+            Cargando instructores...
+          </div>
         ) : filteredInstructors.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-500 text-sm">No hay instructores registrados.</div>
+          <div className="px-6 py-12 text-center text-gray-500 text-sm">
+            No hay instructores registrados.
+          </div>
         ) : (
           <>
             <div className="hidden md:block overflow-x-auto">
@@ -348,27 +455,54 @@ const Instructores = () => {
                     <th className="px-4 py-3 font-medium">Especialidad</th>
                     <th className="px-4 py-3 font-medium">Contacto</th>
                     <th className="px-4 py-3 font-medium">Estatus</th>
-                    <th className="px-4 py-3 font-medium text-center">Acciones</th>
+                    <th className="px-4 py-3 font-medium text-center">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-gray-800">
                   {paginatedInstructors.map((ins, idx) => (
-                    <tr key={ins.id_instructor} className={`transition-colors ${idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"} hover:bg-gray-800/30`}>
-                      <td className="px-4 py-3 text-sm font-semibold text-white">{ins.nombre_completo}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400">{ins.especialidad}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400 italic">{ins.contacto || "Sin dato"}</td>
+                    <tr
+                      key={ins.id_instructor}
+                      className={`transition-colors ${
+                        idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"
+                      } hover:bg-gray-800/30`}
+                    >
+                      <td className="px-4 py-3 text-sm font-semibold text-white">
+                        {ins.nombre_completo}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-400">
+                        {ins.especialidad}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-400 italic">
+                        {ins.contacto || "Sin dato"}
+                      </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(ins.estatus)}`}>
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(
+                            ins.estatus
+                          )}`}
+                        >
                           {ins.estatus}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={(e) => {
+                        <button
+                          onClick={(e) => {
                             const rect = e.currentTarget.getBoundingClientRect();
-                            setMenuPos({ top: rect.bottom + 8, left: rect.right - 192 });
-                            setActiveMenu(activeMenu === ins.id_instructor ? null : ins.id_instructor);
+                            setMenuPos({
+                              top: rect.bottom + 8,
+                              left: rect.right - 192,
+                            });
+                            setActiveMenu(
+                              activeMenu === ins.id_instructor
+                                ? null
+                                : ins.id_instructor
+                            );
                           }}
-                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition mx-auto block">
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition mx-auto block"
+                        >
                           <Ellipsis size={16} />
                         </button>
                       </td>
@@ -380,24 +514,48 @@ const Instructores = () => {
 
             <div className="md:hidden divide-y divide-gray-800">
               {paginatedInstructors.map((ins) => (
-                <div key={ins.id_instructor} className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors">
+                <div
+                  key={ins.id_instructor}
+                  className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors"
+                >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-semibold text-sm text-white">{ins.nombre_completo}</h3>
-                      <p className="text-xs text-gray-500">{ins.especialidad}</p>
+                      <h3 className="font-semibold text-sm text-white">
+                        {ins.nombre_completo}
+                      </h3>
+                      <p className="text-xs text-gray-500">
+                        {ins.especialidad}
+                      </p>
                     </div>
-                    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(ins.estatus)}`}>
+                    <span
+                      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(
+                        ins.estatus
+                      )}`}
+                    >
                       {ins.estatus}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 italic">{ins.contacto || "Sin dato"}</p>
+
+                  <p className="text-xs text-gray-400 italic">
+                    {ins.contacto || "Sin dato"}
+                  </p>
+
                   <div className="flex justify-end">
-                    <button onClick={(e) => {
+                    <button
+                      onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
-                        setMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 192) });
-                        setActiveMenu(activeMenu === ins.id_instructor ? null : ins.id_instructor);
+                        setMenuPos({
+                          top: rect.bottom + 8,
+                          left: Math.max(8, rect.right - 192),
+                        });
+                        setActiveMenu(
+                          activeMenu === ins.id_instructor
+                            ? null
+                            : ins.id_instructor
+                        );
                       }}
-                      className="p-1.5 text-gray-400 hover:bg-gray-800 rounded-full transition">
+                      className="p-1.5 text-gray-400 hover:bg-gray-800 rounded-full transition"
+                    >
                       <Ellipsis size={16} />
                     </button>
                   </div>
@@ -405,38 +563,74 @@ const Instructores = () => {
               ))}
             </div>
 
-            <Pagination current={currentPage} total={totalPages} onPageChange={setCurrentPage} count={filteredInstructors.length} winSize={windowSize} />
+            <Pagination
+              current={currentPage}
+              total={totalPages}
+              onPageChange={setCurrentPage}
+              count={filteredInstructors.length}
+              winSize={windowSize}
+            />
           </>
         )}
       </div>
 
-      {activeMenu && menuPos && createPortal(
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => { setActiveMenu(null); setMenuPos(null); }}></div>
-          <div className="fixed z-50 w-48 rounded-xl border border-gray-700 bg-[#1b2130] shadow-xl outline-none"
-            style={{ top: menuPos.top, left: menuPos.left }}>
-            <div className="py-1.5">
-              {(() => {
-                const ins = filteredInstructors.find(i => i.id_instructor === activeMenu);
-                if (!ins) return null;
-                return (
-                  <>
-                    <button onClick={() => { openEdit(ins); setActiveMenu(null); setMenuPos(null); }}
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
-                      <Pencil size={15} className="mr-3 text-amber-400" /> Editar
-                    </button>
-                    <button onClick={() => { handleEliminar(ins.id_instructor); setActiveMenu(null); setMenuPos(null); }}
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
-                      <CircleOff size={15} className="mr-3 text-red-400" /> Dar de baja
-                    </button>
-                  </>
-                );
-              })()}
+      {activeMenu &&
+        menuPos &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => {
+                setActiveMenu(null);
+                setMenuPos(null);
+              }}
+            />
+
+            <div
+              className="fixed z-50 w-48 rounded-xl border border-gray-700 bg-[#1b2130] shadow-xl outline-none"
+              style={{ top: menuPos.top, left: menuPos.left }}
+            >
+              <div className="py-1.5">
+                {(() => {
+                  const ins = filteredInstructors.find(
+                    (i) => i.id_instructor === activeMenu
+                  );
+
+                  if (!ins) return null;
+
+                  return (
+                    <>
+                      <button
+                        onClick={() => {
+                          openEdit(ins);
+                          setActiveMenu(null);
+                          setMenuPos(null);
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
+                      >
+                        <Pencil size={15} className="mr-3 text-amber-400" />{" "}
+                        Editar
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleEliminar(ins.id_instructor);
+                          setActiveMenu(null);
+                          setMenuPos(null);
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
+                      >
+                        <CircleOff size={15} className="mr-3 text-red-400" />{" "}
+                        Dar de baja
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
-          </div>
-        </>,
-        document.body
-      )}
+          </>,
+          document.body
+        )}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
@@ -447,38 +641,71 @@ const Instructores = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-300">Nombre completo</label>
+                <label className="mb-1 block text-sm font-medium text-gray-300">
+                  Nombre completo
+                </label>
                 <input
-                  type="text" required
+                  type="text"
+                  required
                   value={formData.nombre_completo}
-                  onChange={(e) => setFormData({ ...formData, nombre_completo: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      nombre_completo: e.target.value,
+                    })
+                  }
                   className="w-full rounded-lg border border-gray-700 bg-[#0f131a] px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400"
                 />
               </div>
+
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-300">Especialidad</label>
+                <label className="mb-1 block text-sm font-medium text-gray-300">
+                  Especialidad
+                </label>
                 <input
-                  type="text" required
+                  type="text"
+                  required
                   value={formData.especialidad}
-                  onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      especialidad: e.target.value,
+                    })
+                  }
                   className="w-full rounded-lg border border-gray-700 bg-[#0f131a] px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400"
                 />
               </div>
+
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-300">Contacto (Tel/Email)</label>
+                <label className="mb-1 block text-sm font-medium text-gray-300">
+                  Contacto Tel/Email
+                </label>
                 <input
                   type="text"
                   value={formData.contacto}
-                  onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      contacto: e.target.value,
+                    })
+                  }
                   className="w-full rounded-lg border border-gray-700 bg-[#0f131a] px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400"
                 />
               </div>
+
               {editMode && (
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-300">Estatus</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-300">
+                    Estatus
+                  </label>
                   <select
                     value={formData.estatus}
-                    onChange={(e) => setFormData({ ...formData, estatus: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        estatus: e.target.value,
+                      })
+                    }
                     className="w-full rounded-lg border border-gray-700 bg-[#0f131a] px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400"
                   >
                     <option value="Activo">Activo</option>
@@ -486,13 +713,21 @@ const Instructores = () => {
                   </select>
                 </div>
               )}
+
               <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={closeModal}
-                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white"
+                >
                   Cancelar
                 </button>
-                <button type="submit" disabled={saving}
-                  className="rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-black transition hover:bg-yellow-300 disabled:opacity-60">
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-black transition hover:bg-yellow-300 disabled:opacity-60"
+                >
                   {saving ? "Guardando..." : editMode ? "Actualizar" : "Guardar"}
                 </button>
               </div>
