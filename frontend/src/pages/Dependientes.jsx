@@ -17,9 +17,9 @@ import {
   Ellipsis,
 } from "lucide-react";
 
-const API_DEPENDIENTES = "http://localhost:8000/api/dependientes";
-const API_TITULARES = "http://localhost:8000/api/titulares";
-const API_SOCIOS = "http://localhost:8000/api/socios";
+import API_BASE_URL from "../config/api";
+import { useAuth } from "../context/AuthContext";
+
 const ITEMS_PER_PAGE = 10;
 
 const initialForm = {
@@ -37,6 +37,7 @@ const fieldBaseClass =
 const labelClass = "mb-1 block text-sm font-medium text-gray-300";
 
 const Dependientes = () => {
+  const { token } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [dependientes, setDependientes] = useState([]);
@@ -61,22 +62,43 @@ const Dependientes = () => {
 
   const titularFiltro = searchParams.get("titular");
 
+  const authHeaders = useMemo(
+    () => ({
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token]
+  );
+
+  const jsonAuthHeaders = useMemo(
+    () => ({
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    }),
+    [token]
+  );
+
   useEffect(() => {
     const check = () => setWindowSize(window.innerWidth < 768 ? 3 : 10);
     check();
     window.addEventListener("resize", check);
+
     return () => window.removeEventListener("resize", check);
   }, []);
 
   const fetchDependientes = async () => {
     try {
-      const res = await fetch(API_DEPENDIENTES, {
-        headers: { Accept: "application/json" },
+      const res = await fetch(`${API_BASE_URL}/dependientes`, {
+        headers: authHeaders,
       });
+
       const result = await res.json();
 
       if (!res.ok) {
-        throw new Error(result.message || "No se pudieron cargar los dependientes");
+        throw new Error(
+          result.message || "No se pudieron cargar los dependientes"
+        );
       }
 
       setDependientes(result.data || []);
@@ -88,9 +110,10 @@ const Dependientes = () => {
 
   const fetchTitulares = async () => {
     try {
-      const res = await fetch(API_TITULARES, {
-        headers: { Accept: "application/json" },
+      const res = await fetch(`${API_BASE_URL}/titulares`, {
+        headers: authHeaders,
       });
+
       const result = await res.json();
 
       if (!res.ok) {
@@ -105,6 +128,8 @@ const Dependientes = () => {
   };
 
   const cargarTodo = async () => {
+    if (!token) return;
+
     try {
       setLoading(true);
       setError("");
@@ -115,8 +140,10 @@ const Dependientes = () => {
   };
 
   useEffect(() => {
-    cargarTodo();
-  }, []);
+    if (token) {
+      cargarTodo();
+    }
+  }, [token]);
 
   useEffect(() => {
     const handleOpenCreateModal = () => openCreateModal();
@@ -131,7 +158,9 @@ const Dependientes = () => {
     };
   }, [titularFiltro, titulares]);
 
-  useEffect(() => { setCurrentPage(1); }, [titularFiltro]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [titularFiltro]);
 
   const titularesFamiliares = useMemo(() => {
     return titulares.filter(
@@ -180,6 +209,7 @@ const Dependientes = () => {
       ...initialForm,
       id_titular_fk: titularPreseleccionado,
     });
+
     setShowCreateModal(true);
   };
 
@@ -190,6 +220,7 @@ const Dependientes = () => {
 
   const openEditModal = (dependiente) => {
     setEditingId(dependiente.id_socio);
+
     setEditFormData({
       nombre: dependiente.nombre || "",
       apellidos: dependiente.apellidos || "",
@@ -200,6 +231,7 @@ const Dependientes = () => {
       numero_documento: dependiente.numero_documento || "",
       id_titular_fk: dependiente.id_titular_fk || "",
     });
+
     setShowEditModal(true);
   };
 
@@ -211,6 +243,7 @@ const Dependientes = () => {
 
   const handleCreateChange = (e) => {
     const { name, value } = e.target;
+
     setCreateFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -219,6 +252,7 @@ const Dependientes = () => {
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
+
     setEditFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -245,12 +279,9 @@ const Dependientes = () => {
         id_titular_fk: Number(createFormData.id_titular_fk),
       };
 
-      const res = await fetch(API_SOCIOS, {
+      const res = await fetch(`${API_BASE_URL}/socios`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: jsonAuthHeaders,
         body: JSON.stringify(payload),
       });
 
@@ -290,12 +321,9 @@ const Dependientes = () => {
         id_titular_fk: Number(editFormData.id_titular_fk),
       };
 
-      const res = await fetch(`${API_SOCIOS}/${editingId}`, {
+      const res = await fetch(`${API_BASE_URL}/socios/${editingId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: jsonAuthHeaders,
         body: JSON.stringify(payload),
       });
 
@@ -303,7 +331,9 @@ const Dependientes = () => {
 
       if (!res.ok) {
         console.error(result);
-        throw new Error(result.message || "No se pudo actualizar el dependiente");
+        throw new Error(
+          result.message || "No se pudo actualizar el dependiente"
+        );
       }
 
       await cargarTodo();
@@ -326,9 +356,9 @@ const Dependientes = () => {
     try {
       setError("");
 
-      const res = await fetch(`${API_SOCIOS}/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/socios/${id}`, {
         method: "DELETE",
-        headers: { Accept: "application/json" },
+        headers: authHeaders,
       });
 
       const result = await res.json();
@@ -353,7 +383,11 @@ const Dependientes = () => {
     );
   }, [dependientes, titularFiltro]);
 
-  const totalPages = Math.max(1, Math.ceil(dependientesFiltrados.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(dependientesFiltrados.length / ITEMS_PER_PAGE)
+  );
+
   const paginatedDependientes = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return dependientesFiltrados.slice(start, start + ITEMS_PER_PAGE);
@@ -407,47 +441,72 @@ const Dependientes = () => {
   };
 
   const titularActual = getTitularActual();
+
   const titularFiltroEsIndividual =
     titularActual &&
     (titularActual.modalidad || "").toLowerCase() !== "familiar";
 
   const Pagination = ({ current, total, onPageChange, count, winSize = 10 }) => {
     if (total <= 1) return null;
+
     const curWin = Math.ceil(current / winSize);
     const startP = (curWin - 1) * winSize + 1;
     const endP = Math.min(startP + winSize - 1, total);
+
     return (
       <div className="flex items-center justify-between px-4 md:px-5 py-3 border-t border-gray-800">
-        <p className="text-xs text-gray-500">{count} registros — Pág. {current} de {total}</p>
+        <p className="text-xs text-gray-500">
+          {count} registros — Pág. {current} de {total}
+        </p>
+
         <div className="flex items-center gap-1">
-          <button onClick={() => onPageChange(Math.max(1, current - winSize))}
+          <button
+            onClick={() => onPageChange(Math.max(1, current - winSize))}
             disabled={curWin === 1}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-            title="Anterior ventana">
+            title="Anterior ventana"
+          >
             <ChevronsLeft size={16} />
           </button>
-          <button onClick={() => onPageChange(Math.max(1, current - 1))}
+
+          <button
+            onClick={() => onPageChange(Math.max(1, current - 1))}
             disabled={current === 1}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+          >
             <ChevronLeft size={16} />
           </button>
-          {Array.from({ length: endP - startP + 1 }, (_, i) => startP + i).map((page) => (
-            <button key={page} onClick={() => onPageChange(page)}
-              className={`w-7 h-7 rounded-lg text-xs font-medium transition ${
-                page === current
-                  ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/30"
-                  : "text-gray-500 hover:bg-gray-800 hover:text-white"
-              }`}>{page}</button>
-          ))}
-          <button onClick={() => onPageChange(Math.min(total, current + 1))}
+
+          {Array.from({ length: endP - startP + 1 }, (_, i) => startP + i).map(
+            (page) => (
+              <button
+                key={page}
+                onClick={() => onPageChange(page)}
+                className={`w-7 h-7 rounded-lg text-xs font-medium transition ${
+                  page === current
+                    ? "bg-yellow-400/10 text-yellow-400 border border-yellow-400/30"
+                    : "text-gray-500 hover:bg-gray-800 hover:text-white"
+                }`}
+              >
+                {page}
+              </button>
+            )
+          )}
+
+          <button
+            onClick={() => onPageChange(Math.min(total, current + 1))}
             disabled={current === total}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+          >
             <ChevronRight size={16} />
           </button>
-          <button onClick={() => onPageChange(Math.min(total, startP + winSize))}
+
+          <button
+            onClick={() => onPageChange(Math.min(total, startP + winSize))}
             disabled={endP === total}
             className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-800 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
-            title="Siguiente ventana">
+            title="Siguiente ventana"
+          >
             <ChevronsRight size={16} />
           </button>
         </div>
@@ -461,15 +520,20 @@ const Dependientes = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-500/20 bg-violet-500/10 px-4 py-3">
           <div className="flex items-center gap-3 text-violet-300">
             <Filter size={16} />
+
             <div>
               <p className="text-sm font-semibold">Filtro activo por titular</p>
               <p className="text-xs text-violet-200">
-                {titularActual.nombre} {titularActual.apellidos} (ID: {titularActual.id_socio})
+                {titularActual.nombre} {titularActual.apellidos} (ID:{" "}
+                {titularActual.id_socio})
               </p>
             </div>
           </div>
-          <button onClick={limpiarFiltroTitular}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-400/20 bg-[#14171c] px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-500/10">
+
+          <button
+            onClick={limpiarFiltroTitular}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-400/20 bg-[#14171c] px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-500/10"
+          >
             <X size={14} /> Ver todos
           </button>
         </div>
@@ -477,8 +541,9 @@ const Dependientes = () => {
 
       {titularFiltroEsIndividual && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
-          El titular filtrado tiene modalidad <span className="font-semibold">Individual</span>.
-          No se le pueden registrar dependientes.
+          El titular filtrado tiene modalidad{" "}
+          <span className="font-semibold">Individual</span>. No se le pueden
+          registrar dependientes.
         </div>
       )}
 
@@ -490,30 +555,53 @@ const Dependientes = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-blue-900/30 text-blue-400"><Users size={16} /></div>
+          <div className="p-2 rounded-lg bg-blue-900/30 text-blue-400">
+            <Users size={16} />
+          </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Total</p>
-            <p className="text-lg md:text-xl font-bold">{stats.totalDependientes}</p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
+              Total
+            </p>
+            <p className="text-lg md:text-xl font-bold">
+              {stats.totalDependientes}
+            </p>
           </div>
         </div>
+
         <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-violet-900/30 text-violet-400"><Link2 size={16} /></div>
+          <div className="p-2 rounded-lg bg-violet-900/30 text-violet-400">
+            <Link2 size={16} />
+          </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Titulares</p>
-            <p className="text-lg md:text-xl font-bold">{stats.titularesUnicos}</p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
+              Titulares
+            </p>
+            <p className="text-lg md:text-xl font-bold">
+              {stats.titularesUnicos}
+            </p>
           </div>
         </div>
+
         <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-emerald-900/30 text-emerald-400"><UserRound size={16} /></div>
+          <div className="p-2 rounded-lg bg-emerald-900/30 text-emerald-400">
+            <UserRound size={16} />
+          </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Vigentes</p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
+              Vigentes
+            </p>
             <p className="text-lg md:text-xl font-bold">{stats.vigentes}</p>
           </div>
         </div>
+
         <div className="bg-[#14171c] p-3 md:p-4 rounded-xl border border-gray-800 flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-amber-900/30 text-amber-400"><Users size={16} /></div>
+          <div className="p-2 rounded-lg bg-amber-900/30 text-amber-400">
+            <Users size={16} />
+          </div>
           <div className="min-w-0">
-            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">Sin doc.</p>
+            <p className="text-gray-500 text-[10px] md:text-xs font-medium uppercase truncate">
+              Sin doc.
+            </p>
             <p className="text-lg md:text-xl font-bold">{stats.sinDocumento}</p>
           </div>
         </div>
@@ -528,15 +616,20 @@ const Dependientes = () => {
                 : "Directorio de dependientes"}
             </h2>
           </div>
-          <button onClick={cargarTodo}
+
+          <button
+            onClick={cargarTodo}
             className="p-1.5 rounded-lg border border-gray-700 bg-[#0f131a] text-gray-300 hover:border-gray-600 hover:text-white transition w-max"
-            title="Recargar dependientes">
+            title="Recargar dependientes"
+          >
             <RefreshCcw size={16} />
           </button>
         </div>
 
         {loading ? (
-          <div className="px-6 py-12 text-center text-gray-400 text-sm">Cargando dependientes...</div>
+          <div className="px-6 py-12 text-center text-gray-400 text-sm">
+            Cargando dependientes...
+          </div>
         ) : dependientesFiltrados.length === 0 ? (
           <div className="px-6 py-12 text-center text-gray-500 text-sm">
             {titularActual
@@ -554,28 +647,58 @@ const Dependientes = () => {
                     <th className="px-4 py-3 font-medium">Apellidos</th>
                     <th className="px-4 py-3 font-medium">Titular</th>
                     <th className="px-4 py-3 font-medium">Estatus</th>
-                    <th className="px-4 py-3 font-medium text-center">Acciones</th>
+                    <th className="px-4 py-3 font-medium text-center">
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-gray-800">
                   {paginatedDependientes.map((dep, idx) => (
-                    <tr key={dep.id_socio} className={`transition-colors ${idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"} hover:bg-gray-800/30`}>
-                      <td className="px-4 py-3 text-sm text-gray-300">{dep.id_socio}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-white">{dep.nombre}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400">{dep.apellidos}</td>
-                      <td className="px-4 py-3 text-sm text-gray-400">{getNombreTitular(dep.id_titular_fk)}</td>
+                    <tr
+                      key={dep.id_socio}
+                      className={`transition-colors ${
+                        idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.02]"
+                      } hover:bg-gray-800/30`}
+                    >
+                      <td className="px-4 py-3 text-sm text-gray-300">
+                        {dep.id_socio}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-white">
+                        {dep.nombre}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-400">
+                        {dep.apellidos}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-400">
+                        {getNombreTitular(dep.id_titular_fk)}
+                      </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(dep.estatus_financiero)}`}>
+                        <span
+                          className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(
+                            dep.estatus_financiero
+                          )}`}
+                        >
                           {dep.estatus_financiero || "Sin estatus"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={(e) => {
-                            const rect = e.currentTarget.getBoundingClientRect();
-                            setMenuPos({ top: rect.bottom + 8, left: rect.right - 192 });
-                            setActiveMenu(activeMenu === dep.id_socio ? null : dep.id_socio);
+                        <button
+                          onClick={(e) => {
+                            const rect =
+                              e.currentTarget.getBoundingClientRect();
+                            setMenuPos({
+                              top: rect.bottom + 8,
+                              left: rect.right - 192,
+                            });
+                            setActiveMenu(
+                              activeMenu === dep.id_socio
+                                ? null
+                                : dep.id_socio
+                            );
                           }}
-                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition mx-auto block">
+                          className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-800 rounded-full transition mx-auto block"
+                        >
                           <Ellipsis size={16} />
                         </button>
                       </td>
@@ -587,24 +710,45 @@ const Dependientes = () => {
 
             <div className="md:hidden divide-y divide-gray-800">
               {paginatedDependientes.map((dep) => (
-                <div key={dep.id_socio} className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors">
+                <div
+                  key={dep.id_socio}
+                  className="p-4 space-y-2 hover:bg-gray-800/20 transition-colors"
+                >
                   <div className="flex items-start justify-between">
                     <div>
-                      <h3 className="font-semibold text-sm text-white">{dep.nombre} {dep.apellidos}</h3>
+                      <h3 className="font-semibold text-sm text-white">
+                        {dep.nombre} {dep.apellidos}
+                      </h3>
                       <p className="text-xs text-gray-500">ID: {dep.id_socio}</p>
                     </div>
-                    <span className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(dep.estatus_financiero)}`}>
+
+                    <span
+                      className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold ${getStatusBadge(
+                        dep.estatus_financiero
+                      )}`}
+                    >
                       {dep.estatus_financiero || "Sin estatus"}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400">Titular: {getNombreTitular(dep.id_titular_fk)}</p>
+
+                  <p className="text-xs text-gray-400">
+                    Titular: {getNombreTitular(dep.id_titular_fk)}
+                  </p>
+
                   <div className="flex justify-end">
-                    <button onClick={(e) => {
+                    <button
+                      onClick={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
-                        setMenuPos({ top: rect.bottom + 8, left: Math.max(8, rect.right - 192) });
-                        setActiveMenu(activeMenu === dep.id_socio ? null : dep.id_socio);
+                        setMenuPos({
+                          top: rect.bottom + 8,
+                          left: Math.max(8, rect.right - 192),
+                        });
+                        setActiveMenu(
+                          activeMenu === dep.id_socio ? null : dep.id_socio
+                        );
                       }}
-                      className="p-1.5 text-gray-400 hover:bg-gray-800 rounded-full transition">
+                      className="p-1.5 text-gray-400 hover:bg-gray-800 rounded-full transition"
+                    >
                       <Ellipsis size={16} />
                     </button>
                   </div>
@@ -612,52 +756,100 @@ const Dependientes = () => {
               ))}
             </div>
 
-            <Pagination current={currentPage} total={totalPages} onPageChange={setCurrentPage} count={dependientesFiltrados.length} winSize={windowSize} />
+            <Pagination
+              current={currentPage}
+              total={totalPages}
+              onPageChange={setCurrentPage}
+              count={dependientesFiltrados.length}
+              winSize={windowSize}
+            />
           </>
         )}
       </div>
 
-      {activeMenu && menuPos && createPortal(
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => { setActiveMenu(null); setMenuPos(null); }}></div>
-          <div className="fixed z-50 w-48 rounded-xl border border-gray-700 bg-[#1b2130] shadow-xl outline-none"
-            style={{ top: menuPos.top, left: menuPos.left }}>
-            <div className="py-1.5">
-              {(() => {
-                const dep = dependientesFiltrados.find(d => d.id_socio === activeMenu);
-                if (!dep) return null;
-                return (
-                  <>
-                    <button onClick={() => { openEditModal(dep); setActiveMenu(null); setMenuPos(null); }}
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
-                      <Pencil size={15} className="mr-3 text-amber-400" /> Editar
-                    </button>
-                    <button onClick={() => { handleEliminarDependiente(dep.id_socio, dep.nombre); setActiveMenu(null); setMenuPos(null); }}
-                      className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition">
-                      <Trash2 size={15} className="mr-3 text-red-400" /> Eliminar
-                    </button>
-                  </>
-                );
-              })()}
+      {activeMenu &&
+        menuPos &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => {
+                setActiveMenu(null);
+                setMenuPos(null);
+              }}
+            ></div>
+
+            <div
+              className="fixed z-50 w-48 rounded-xl border border-gray-700 bg-[#1b2130] shadow-xl outline-none"
+              style={{ top: menuPos.top, left: menuPos.left }}
+            >
+              <div className="py-1.5">
+                {(() => {
+                  const dep = dependientesFiltrados.find(
+                    (d) => d.id_socio === activeMenu
+                  );
+
+                  if (!dep) return null;
+
+                  return (
+                    <>
+                      <button
+                        onClick={() => {
+                          openEditModal(dep);
+                          setActiveMenu(null);
+                          setMenuPos(null);
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
+                      >
+                        <Pencil size={15} className="mr-3 text-amber-400" />
+                        Editar
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleEliminarDependiente(dep.id_socio, dep.nombre);
+                          setActiveMenu(null);
+                          setMenuPos(null);
+                        }}
+                        className="flex w-full items-center px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition"
+                      >
+                        <Trash2 size={15} className="mr-3 text-red-400" />
+                        Eliminar
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
-          </div>
-        </>,
-        document.body
-      )}
+          </>,
+          document.body
+        )}
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 bg-[#14171c] p-6 shadow-2xl">
-            <h2 className="mb-6 text-2xl font-bold text-white">Registrar dependiente</h2>
+            <h2 className="mb-6 text-2xl font-bold text-white">
+              Registrar dependiente
+            </h2>
 
-            <form onSubmit={handleCreateDependiente} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form
+              onSubmit={handleCreateDependiente}
+              className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            >
               <div className="md:col-span-2">
                 <label className={labelClass}>Titular</label>
-                <select name="id_titular_fk" value={createFormData.id_titular_fk} onChange={handleCreateChange} className={fieldBaseClass} required>
+                <select
+                  name="id_titular_fk"
+                  value={createFormData.id_titular_fk}
+                  onChange={handleCreateChange}
+                  className={fieldBaseClass}
+                  required
+                >
                   <option value="">Selecciona un titular</option>
                   {titularesFamiliares.map((titular) => (
                     <option key={titular.id_socio} value={titular.id_socio}>
-                      {titular.nombre} {titular.apellidos} (ID: {titular.id_socio})
+                      {titular.nombre} {titular.apellidos} (ID:{" "}
+                      {titular.id_socio})
                     </option>
                   ))}
                 </select>
@@ -665,22 +857,49 @@ const Dependientes = () => {
 
               <div>
                 <label className={labelClass}>Nombre</label>
-                <input type="text" name="nombre" value={createFormData.nombre} onChange={handleCreateChange} className={fieldBaseClass} required />
+                <input
+                  type="text"
+                  name="nombre"
+                  value={createFormData.nombre}
+                  onChange={handleCreateChange}
+                  className={fieldBaseClass}
+                  required
+                />
               </div>
 
               <div>
                 <label className={labelClass}>Apellidos</label>
-                <input type="text" name="apellidos" value={createFormData.apellidos} onChange={handleCreateChange} className={fieldBaseClass} required />
+                <input
+                  type="text"
+                  name="apellidos"
+                  value={createFormData.apellidos}
+                  onChange={handleCreateChange}
+                  className={fieldBaseClass}
+                  required
+                />
               </div>
 
               <div>
                 <label className={labelClass}>Fecha de nacimiento</label>
-                <input type="date" name="fecha_nacimiento" value={createFormData.fecha_nacimiento} onChange={handleCreateChange} className={fieldBaseClass} required />
+                <input
+                  type="date"
+                  name="fecha_nacimiento"
+                  value={createFormData.fecha_nacimiento}
+                  onChange={handleCreateChange}
+                  className={fieldBaseClass}
+                  required
+                />
               </div>
 
               <div>
                 <label className={labelClass}>Género</label>
-                <select name="genero" value={createFormData.genero} onChange={handleCreateChange} className={fieldBaseClass} required>
+                <select
+                  name="genero"
+                  value={createFormData.genero}
+                  onChange={handleCreateChange}
+                  className={fieldBaseClass}
+                  required
+                >
                   <option value="">Selecciona una opción</option>
                   <option value="Masculino">Masculino</option>
                   <option value="Femenino">Femenino</option>
@@ -691,16 +910,29 @@ const Dependientes = () => {
 
               <div className="md:col-span-2">
                 <label className={labelClass}>Número de documento</label>
-                <input type="text" name="numero_documento" value={createFormData.numero_documento} onChange={handleCreateChange} className={fieldBaseClass} />
+                <input
+                  type="text"
+                  name="numero_documento"
+                  value={createFormData.numero_documento}
+                  onChange={handleCreateChange}
+                  className={fieldBaseClass}
+                />
               </div>
 
               <div className="mt-4 flex justify-end gap-3 md:col-span-2">
-                <button type="button" onClick={closeCreateModal}
-                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white">
+                <button
+                  type="button"
+                  onClick={closeCreateModal}
+                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white"
+                >
                   Cancelar
                 </button>
-                <button type="submit" disabled={savingCreate || titularesFamiliares.length === 0}
-                  className="rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-black transition hover:bg-yellow-300 disabled:opacity-60">
+
+                <button
+                  type="submit"
+                  disabled={savingCreate || titularesFamiliares.length === 0}
+                  className="rounded-lg bg-yellow-400 px-4 py-2 text-sm font-bold text-black transition hover:bg-yellow-300 disabled:opacity-60"
+                >
                   {savingCreate ? "Guardando..." : "Registrar dependiente"}
                 </button>
               </div>
@@ -712,16 +944,28 @@ const Dependientes = () => {
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
           <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-800 bg-[#14171c] p-6 shadow-2xl">
-            <h2 className="mb-6 text-2xl font-bold text-white">Editar dependiente</h2>
+            <h2 className="mb-6 text-2xl font-bold text-white">
+              Editar dependiente
+            </h2>
 
-            <form onSubmit={handleUpdateDependiente} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <form
+              onSubmit={handleUpdateDependiente}
+              className="grid grid-cols-1 gap-4 md:grid-cols-2"
+            >
               <div className="md:col-span-2">
                 <label className={labelClass}>Titular</label>
-                <select name="id_titular_fk" value={editFormData.id_titular_fk} onChange={handleEditChange} className={fieldBaseClass} required>
+                <select
+                  name="id_titular_fk"
+                  value={editFormData.id_titular_fk}
+                  onChange={handleEditChange}
+                  className={fieldBaseClass}
+                  required
+                >
                   <option value="">Selecciona un titular</option>
                   {titularesFamiliares.map((titular) => (
                     <option key={titular.id_socio} value={titular.id_socio}>
-                      {titular.nombre} {titular.apellidos} (ID: {titular.id_socio})
+                      {titular.nombre} {titular.apellidos} (ID:{" "}
+                      {titular.id_socio})
                     </option>
                   ))}
                 </select>
@@ -729,22 +973,49 @@ const Dependientes = () => {
 
               <div>
                 <label className={labelClass}>Nombre</label>
-                <input type="text" name="nombre" value={editFormData.nombre} onChange={handleEditChange} className={fieldBaseClass} required />
+                <input
+                  type="text"
+                  name="nombre"
+                  value={editFormData.nombre}
+                  onChange={handleEditChange}
+                  className={fieldBaseClass}
+                  required
+                />
               </div>
 
               <div>
                 <label className={labelClass}>Apellidos</label>
-                <input type="text" name="apellidos" value={editFormData.apellidos} onChange={handleEditChange} className={fieldBaseClass} required />
+                <input
+                  type="text"
+                  name="apellidos"
+                  value={editFormData.apellidos}
+                  onChange={handleEditChange}
+                  className={fieldBaseClass}
+                  required
+                />
               </div>
 
               <div>
                 <label className={labelClass}>Fecha de nacimiento</label>
-                <input type="date" name="fecha_nacimiento" value={editFormData.fecha_nacimiento} onChange={handleEditChange} className={fieldBaseClass} required />
+                <input
+                  type="date"
+                  name="fecha_nacimiento"
+                  value={editFormData.fecha_nacimiento}
+                  onChange={handleEditChange}
+                  className={fieldBaseClass}
+                  required
+                />
               </div>
 
               <div>
                 <label className={labelClass}>Género</label>
-                <select name="genero" value={editFormData.genero} onChange={handleEditChange} className={fieldBaseClass} required>
+                <select
+                  name="genero"
+                  value={editFormData.genero}
+                  onChange={handleEditChange}
+                  className={fieldBaseClass}
+                  required
+                >
                   <option value="">Selecciona una opción</option>
                   <option value="Masculino">Masculino</option>
                   <option value="Femenino">Femenino</option>
@@ -755,16 +1026,29 @@ const Dependientes = () => {
 
               <div className="md:col-span-2">
                 <label className={labelClass}>Número de documento</label>
-                <input type="text" name="numero_documento" value={editFormData.numero_documento} onChange={handleEditChange} className={fieldBaseClass} />
+                <input
+                  type="text"
+                  name="numero_documento"
+                  value={editFormData.numero_documento}
+                  onChange={handleEditChange}
+                  className={fieldBaseClass}
+                />
               </div>
 
               <div className="mt-4 flex justify-end gap-3 md:col-span-2">
-                <button type="button" onClick={closeEditModal}
-                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white">
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  className="rounded-lg border border-gray-700 bg-[#0f131a] px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-[#1a2029] hover:text-white"
+                >
                   Cancelar
                 </button>
-                <button type="submit" disabled={savingEdit || titularesFamiliares.length === 0}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60">
+
+                <button
+                  type="submit"
+                  disabled={savingEdit || titularesFamiliares.length === 0}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                >
                   {savingEdit ? "Guardando..." : "Guardar cambios"}
                 </button>
               </div>

@@ -16,6 +16,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'bloquear.sancionado' => \App\Http\Middleware\BloquearSocioSancionado::class,
             'restrict.instructor' => \App\Http\Middleware\RestrictInstructorAccess::class,
         ]);
+
+        $middleware->redirectGuestsTo(function () {
+            return null;
+        });
+
         $middleware->prepend(\App\Http\Middleware\CorsMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
