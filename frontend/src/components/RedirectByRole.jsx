@@ -1,14 +1,24 @@
 import { Navigate } from "react-router-dom";
-import { useRoleSimulator } from "../context/RoleSimulatorContext";
+import { useAuth } from "../context/AuthContext";
 
-const RedirectByRole = () => {
-  const { isAdmin } = useRoleSimulator();
+export default function RedirectByRole() {
+  const { token, user } = useAuth();
 
-  return isAdmin ? (
-    <Navigate to="/dashboard" replace />
-  ) : (
-    <Navigate to="/calendario-instructor" replace />
-  );
-};
+  if (!token || !user) {
+    return <Navigate to="/login" replace />;
+  }
 
-export default RedirectByRole;
+  if (user.role === "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (user.role === "socio") {
+    return <Navigate to="/socio" replace />;
+  }
+
+  if (user.role === "instructor") {
+    return <Navigate to="/calendario-instructor" replace />;
+  }
+
+  return <Navigate to="/login" replace />;
+}

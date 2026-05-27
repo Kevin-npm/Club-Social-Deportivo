@@ -8,8 +8,7 @@ use App\Models\Pago;
 use App\Models\Socio;
 use App\Models\CatMetodoPago;
 use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-use App\Models\Pago;
+use Carbon\Carbon;  
 
 class PagosController extends Controller
 {
