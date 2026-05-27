@@ -20,6 +20,21 @@ class AgendaController extends Controller
             $query->where('id_instructor', $request->id_instructor);
         }
 
+        if ($request->filled('id_usuario')) {
+            $instructor = \Illuminate\Support\Facades\DB::table('tbl_instructores')
+                ->where('id_usuario', $request->id_usuario)
+                ->first();
+            if ($instructor) {
+                $query->where('id_instructor', $instructor->id_instructor);
+            } else {
+                // If user has no instructor profile, return empty
+                return response()->json([
+                    'status' => 'success',
+                    'data' => []
+                ]);
+            }
+        }
+
         $sesiones = $query->get();
 
         return response()->json([

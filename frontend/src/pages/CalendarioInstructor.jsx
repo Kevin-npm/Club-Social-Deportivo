@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import AgendaDetailsModal from "../components/Agendadeatilsmodal";
-import { useRoleSimulator } from "../context/RoleSimulatorContext";
+import { useAuth } from "../context/AuthContext";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const toYMD = (date) => date.toISOString().split("T")[0];
@@ -50,7 +50,7 @@ const isDateWithinRange = (dateStr, start, end) => {
 // ── Componente principal ─────────────────────────────────────────────────────
 const CalendarioInstructor = () => {
   const today = new Date();
-  const { fakeInstructorId } = useRoleSimulator();
+  const { user } = useAuth();
 
   const [currentMonth, setCurrentMonth] = useState(
     new Date(today.getFullYear(), today.getMonth(), 1)
@@ -69,7 +69,7 @@ const CalendarioInstructor = () => {
       setLoading(true);
       try {
         const res = await fetch(
-          `http://localhost:8000/api/agenda?id_instructor=${fakeInstructorId}`
+          `http://localhost:8000/api/agenda?id_usuario=${user?.id_usuario || ''}`
         );
         const result = await res.json();
 
@@ -84,7 +84,7 @@ const CalendarioInstructor = () => {
     };
 
     cargarSesiones();
-  }, [fakeInstructorId]);
+  }, [user]);
 
   const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -203,7 +203,7 @@ const CalendarioInstructor = () => {
             sola vista.
           </p>
           <p className="text-xs text-blue-400">
-            Instructor simulado ID: {fakeInstructorId}
+            Instructor conectado (Usuario ID: {user?.id_usuario})
           </p>
         </div>
       </div>

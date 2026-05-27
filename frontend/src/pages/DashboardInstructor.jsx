@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import API_BASE from "../config/api";
 import {
   Activity,
   TrendingUp,
@@ -17,8 +19,31 @@ import {
 } from "recharts";
 
 const DashboardInstructor = () => {
+  const { user } = useAuth();
   const [mesSeleccionado, setMesSeleccionado] = useState("todos");
   const [mostrarFiltro, setMostrarFiltro] = useState(false);
+  const [metricasBackend, setMetricasBackend] = useState(null);
+  const [graficaBackend, setGraficaBackend] = useState([]);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    const fetchMetricas = async () => {
+      setCargando(true);
+      try {
+        const res = await fetch(`${API_BASE}/instructor/dashboard?id_usuario=${user?.id_usuario || ''}`);
+        const json = await res.json();
+        if (json.status === "success") {
+          setMetricasBackend(json.data.metricas);
+          setGraficaBackend(json.data.grafica);
+        }
+      } catch (err) {
+        console.error("Error cargando metricas del instructor:", err);
+      } finally {
+        setCargando(false);
+      }
+    };
+    fetchMetricas();
+  }, [user]);
 
   const datosPorMes = {
     todos: {
@@ -70,17 +95,21 @@ const DashboardInstructor = () => {
     { mes: "Abr", mesKey: "abril", clases: 24, alumnos: 342 },
   ];
 
-  const metricas = datosPorMes[mesSeleccionado];
+  // Usamos los datos del backend si están disponibles, sino el fallback
+  const metricas = {
+    nombre: mesSeleccionado === "todos" ? "Todos los meses" : mesSeleccionado,
+    clasesImpartidas: metricasBackend?.clasesImpartidas ?? datosPorMes[mesSeleccionado]?.clasesImpartidas ?? 0,
+    alumnosTotales: metricasBackend?.alumnosTotales ?? datosPorMes[mesSeleccionado]?.alumnosTotales ?? 0,
+    promedioOcupacion: metricasBackend?.promedioOcupacion ?? datosPorMes[mesSeleccionado]?.promedioOcupacion ?? 0,
+    cambioClases: "+0 este mes",
+    textoAlumnos: "Alumnos registrados en tus sesiones"
+  };
 
   const dataGrafica = useMemo(() => {
-    if (mesSeleccionado === "todos") {
-      return dataGraficaCompleta;
-    }
-
-    return dataGraficaCompleta.filter(
-      (item) => item.mesKey === mesSeleccionado
-    );
-  }, [mesSeleccionado]);
+    const dataAUsar = graficaBackend.length > 0 ? graficaBackend : dataGraficaCompleta;
+    if (mesSeleccionado === "todos") return dataAUsar;
+    return dataAUsar.filter(item => item.mesKey === mesSeleccionado || item.mes?.toLowerCase() === mesSeleccionado.substr(0,3));
+  }, [mesSeleccionado, graficaBackend]);
 
   const opcionesMes = [
     { value: "todos", label: "Todos los meses" },
@@ -109,7 +138,7 @@ const DashboardInstructor = () => {
           </p>
 
           <p className="text-yellow-400 text-xs font-bold mt-2">
-            Mostrando: {metricas.nombre}
+            Instructor conectado (Usuario ID: {user?.id_usuario})
           </p>
         </div>
 
