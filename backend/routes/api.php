@@ -27,9 +27,9 @@ use App\Http\Controllers\SocioPdfController;
 
 Route::get('/test-db', function () {
     DB::table('users')->insert([
-        'name'       => 'API User 2',
-        'email'      => 'api2@test.com',
-        'password'   => '123456',
+        'name' => 'API User 2',
+        'email' => 'api2@test.com',
+        'password' => '123456',
         'created_at' => now(),
         'updated_at' => now(),
     ]);
@@ -111,6 +111,7 @@ Route::middleware(['restrict.instructor'])->group(function () {
 
     Route::get('/reservas', [ReservasController::class, 'index']);
     Route::get('/reservas/{id}', [ReservasController::class, 'show']);
+
     Route::post('/reservas', [ReservasController::class, 'store'])
         ->middleware('bloquear.sancionado');
     Route::put('/reservas/{id}', [ReservasController::class, 'update']);
