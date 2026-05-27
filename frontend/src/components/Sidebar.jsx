@@ -1,14 +1,23 @@
-import { Dumbbell, X } from "lucide-react";
+import { Dumbbell, X, LogOut } from "lucide-react";
 import { MenuItems } from "../config/navigation";
 import { SidebarItem } from "./SideBarItem";
-import { useRoleSimulator } from "../context/RoleSimulatorContext";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Sidebar = ({ mobileOpen, onClose }) => {
-  const { fakeRole } = useRoleSimulator();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const role = user?.roleString || "admin";
 
   const visibleItems = MenuItems.filter((item) =>
-    item.roles.includes(fakeRole)
+    item.roles.includes(role)
   );
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <>
@@ -50,6 +59,17 @@ const Sidebar = ({ mobileOpen, onClose }) => {
             <SidebarItem key={item.title} item={item} onClick={onClose} />
           ))}
         </nav>
+
+        {/* Botón Cerrar Sesión */}
+        <div className="p-4 border-t border-gray-800">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-sm font-bold text-red-400 hover:bg-red-500/10 transition-colors"
+          >
+            <LogOut size={20} />
+            Cerrar sesión
+          </button>
+        </div>
       </aside>
     </>
   );

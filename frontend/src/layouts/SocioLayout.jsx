@@ -5,6 +5,7 @@ import { useState } from "react";
 
 const navLinks = [
   { to: "/socio",                label: "Mi Perfil",       icon: User },
+  { to: "/socio/dashboard",      label: "Panel de Ludoteca", icon: Shield },
   { to: "/socio/asistencia",     label: "Asistencia QR",   icon: QrCode },
   { to: "/socio/reservas",       label: "Reservas",        icon: CalendarDays },
   { to: "/socio/pagos",          label: "Mis Pagos",       icon: CreditCard },

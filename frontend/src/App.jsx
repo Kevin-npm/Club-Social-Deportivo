@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import DashboardInstructor from "./pages/DashboardInstructor";
 import Recepcion from "./pages/Recepcion";
 import MainLayout from "./layouts/MainLayout";
-import Dashboard from "./pages/Dashboard";
+import Dashboard from "./pages/socio/Dashboard";
 import Socios from "./pages/Socios";
 import CheckIn from "./pages/Checkin";
 import Instalaciones from "./pages/Instalaciones";
@@ -16,6 +16,7 @@ import CalendarioInstructor from "./pages/CalendarioInstructor";
 import RedirectByRole from "./components/RedirectByRole";
 import SetPassword from "./pages/SetPassword";
 import SocioImport from "./pages/admin/SocioImport";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 
 import Login from "./pages/Login";
 import SocioLayout from "./layouts/SocioLayout";
@@ -44,6 +45,7 @@ function App() {
             }
           >
             <Route index element={<SocioHome />} />
+            <Route path="dashboard" element={<Dashboard />} />
             <Route path="reservas" element={<SocioReservas />} />
             <Route path="pagos" element={<SocioPagos />} />
             <Route path="asistencia" element={<SocioAsistencia />} />
@@ -65,6 +67,7 @@ function App() {
             <Route path="/sesiones" element={<Sesiones />} />
             <Route path="/pagos" element={<Pagos />} />
             <Route path="/socios/importar" element={<SocioImport />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
             <Route
               path="/calendario-instructor"
               element={<CalendarioInstructor />}

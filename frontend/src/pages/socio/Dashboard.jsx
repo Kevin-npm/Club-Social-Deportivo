@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Baby, Loader2, LogOut, AlertTriangle, CheckCircle, Hourglass, LogIn } from "lucide-react";
-import { useLudoteca } from "../context/LudotecaContext";
+import { useLudoteca } from "../../context/LudotecaContext";
 
 const getStatusInfo = (segundos) => {
   const minutos = segundos / 60;

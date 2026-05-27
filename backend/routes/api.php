@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ConfirmPasswordController;
 use App\Http\Controllers\Api\NotificacionesController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SocioPortalController;
+use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\InvitadoController;
 
 Route::get('/test-db', function () {
@@ -99,6 +100,7 @@ Route::get('/asistencias',        [AsistenciasController::class, 'index']);
 Route::post('/asistencias',       [AsistenciasController::class, 'store']);
 Route::delete('/asistencias/{id}',[AsistenciasController::class, 'destroy']);
 Route::get('/instructor/dashboard', [InstructorDashboardController::class, 'getMetricas']);
+Route::get('/admin/dashboard', [AdminDashboardController::class, 'getResumen']);
 
 Route::post('/ludoteca/ingreso', [LudotecaController::class, 'registrarIngreso']);
 Route::post('/ludoteca/salida', [LudotecaController::class, 'registrarSalida']);

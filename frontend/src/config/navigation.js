@@ -11,40 +11,47 @@ import {
   Banknote,
   Activity,
   Upload,
+  BarChart3,
 } from "lucide-react";
 
 // Fuente central de navegación
 export const MenuItems = [
   {
+    title: "Admin Dashboard",
+    icon: BarChart3,
+    path: "/admin/dashboard",
+    roles: ["admin"],
+  },
+  {
     title: "Dashboard Ludoteca",
     icon: LayoutDashboard,
     path: "/dashboard",
-    roles: ["admin", "instructor"],
+    roles: ["socio", "admin"],
   },
   {
     title: "Mi Rendimiento",
     icon: Activity,
     path: "/dashboard-instructor",
-    roles: ["instructor", "admin"], 
+    roles: ["instructor"], 
   },
   {
     title: "Instalaciones",
     icon: Building2,
     path: "/instalaciones",
-    roles: ["admin"],
+    roles: ["admin", "recepcion"],
   },
   {
     id: "recepcion",
     title: "Recepción",
     path: "/recepcion",
     icon: BellRing,
-    roles: ["admin"],
+    roles: ["recepcion"],
   },
   {
     title: "Socios",
     icon: Users,
     path: "/socios",
-    roles: ["admin"],
+    roles: ["admin", "recepcion"],
   },
   {
     title: "Importar Socios",
@@ -56,25 +63,25 @@ export const MenuItems = [
     title: "Dependientes",
     icon: UserRound,
     path: "/dependientes",
-    roles: ["admin"],
+    roles: ["admin", "recepcion"],
   },
   {
     title: "Instructores",
     path: "/instructores",
     icon: Users,
-    roles: ["admin"],
+    roles: ["admin", "recepcion"],
   },
   {
     title: "Agenda y Reservaciones",
     icon: NotebookPen,
     path: "/actividades",
-    roles: ["admin"],
+    roles: ["admin", "recepcion"],
   },
   {
     title: "Sesiones",
     icon: CalendarDays,
     path: "/sesiones",
-    roles: ["admin"],
+    roles: ["admin", "recepcion"],
   },
   {
     title: "Mi Calendario",
@@ -86,18 +93,18 @@ export const MenuItems = [
     title: "Torneos",
     icon: Trophy,
     path: "/torneos",
-    roles: ["admin", "instructor"],
+    roles: ["admin", "recepcion"],
   },
-  // {
-  //   title: "Check-in",
-  //   icon: BellPlus,
-  //   path: "/check-in",
-  //   roles: ["admin"],
-  // },
-  // // {
-  //   title: "Pagos",
-  //   icon: Banknote,
-  //   path: "/pagos",
-  //   roles: ["admin"],
-  // },
+  {
+    title: "Check-in",
+    icon: BellPlus,
+    path: "/check-in",
+    roles: ["admin", "recepcion", "instructor"],
+  },
+  {
+    title: "Pagos",
+    icon: Banknote,
+    path: "/pagos",
+    roles: [],
+  },
 ];

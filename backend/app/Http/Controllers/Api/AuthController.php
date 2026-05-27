@@ -76,8 +76,9 @@ class AuthController extends Controller
     {
         return match ((int) $idRol) {
             1 => 'admin',
-            2 => 'socio',
+            2 => 'recepcion',
             3 => 'instructor',
+            4 => 'socio',
             default => 'usuario',
         };
     }

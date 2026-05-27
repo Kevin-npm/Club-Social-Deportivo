@@ -2,10 +2,25 @@ import { createContext, useContext, useState } from "react";
 
 const AuthContext = createContext(null);
 
+const getRoleString = (role) => {
+  if (!role) return "admin";
+  const roleStr = String(role).toLowerCase();
+  if (roleStr === "4") return "socio";
+  if (roleStr === "3") return "instructor";
+  if (roleStr === "2") return "recepcion";
+  if (roleStr === "1") return "admin";
+  return roleStr;
+};
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("cm360_user");
-    return savedUser ? JSON.parse(savedUser) : null;
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      parsed.roleString = getRoleString(parsed.role);
+      return parsed;
+    }
+    return null;
   });
 
   const [token, setToken] = useState(() => {
@@ -13,6 +28,7 @@ export function AuthProvider({ children }) {
   });
 
   const login = (userData, authToken) => {
+    userData.roleString = getRoleString(userData.role);
     localStorage.setItem("cm360_user", JSON.stringify(userData));
     localStorage.setItem("cm360_token", authToken);
     setUser(userData);

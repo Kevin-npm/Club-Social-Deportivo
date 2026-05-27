@@ -8,8 +8,8 @@ export default function ProtectedRoute({ children, allowedRoles }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    if (user.role === "socio") {
+  if (allowedRoles && !allowedRoles.includes(user.roleString)) {
+    if (user.roleString === "socio") {
       return <Navigate to="/socio" replace />;
     }
 

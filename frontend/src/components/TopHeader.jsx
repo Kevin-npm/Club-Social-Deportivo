@@ -2,14 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Check, Menu, Repeat } from "lucide-react";
 import { headerActions } from "../config/header_actions";
-import { useRoleSimulator } from "../context/RoleSimulatorContext";
+import { useAuth } from "../context/AuthContext";
 
 const SOCIO_ID_SIMULADO = 5;
 
 const TopHeader = ({ onMenuToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { fakeRole, toggleRole, isAdmin } = useRoleSimulator();
+  const { user } = useAuth();
+  
+  const roleDisplay = user?.roleString || "admin";
 
   const [notificaciones, setNotificaciones] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -68,9 +70,7 @@ const TopHeader = ({ onMenuToggle }) => {
   };
 
   const handleRoleChange = () => {
-    const nextRoute = isAdmin ? "/calendario-instructor" : "/dashboard";
-    toggleRole();
-    navigate(nextRoute);
+    // Role change removed since we use actual auth now
   };
 
   return (
@@ -207,7 +207,7 @@ const TopHeader = ({ onMenuToggle }) => {
         <div className="flex items-center gap-2 md:gap-3">
           <div className="hidden sm:block text-right">
             <p className="text-xs md:text-sm font-bold">Usuario</p>
-            <p className="text-[10px] md:text-xs text-yellow-400 capitalize">{fakeRole}</p>
+            <p className="text-[10px] md:text-xs text-yellow-400 capitalize">{roleDisplay}</p>
           </div>
           <div className="w-8 h-8 md:w-10 md:h-10 bg-gray-700 rounded-full border-2 border-yellow-400" />
         </div>

@@ -24,13 +24,18 @@ export default function Login() {
     }));
   };
 
-  const redirectByRole = (role) => {
-    if (role === "socio") {
+  const redirectByRole = (roleString) => {
+    if (roleString === "socio") {
       navigate("/socio", { replace: true });
-      return;
+    } else if (roleString === "instructor") {
+      navigate("/dashboard-instructor", { replace: true });
+    } else if (roleString === "recepcion") {
+      navigate("/recepcion", { replace: true });
+    } else if (roleString === "admin") {
+      navigate("/actividades", { replace: true });
+    } else {
+      navigate("/dashboard", { replace: true });
     }
-
-    navigate("/dashboard", { replace: true });
   };
 
   const handleSubmit = async (event) => {
@@ -56,7 +61,7 @@ export default function Login() {
       }
 
       login(data.user, data.token);
-      redirectByRole(data.user.role);
+      redirectByRole(data.user.roleString);
     } catch (error) {
       setError("No se pudo conectar con el servidor.");
     } finally {

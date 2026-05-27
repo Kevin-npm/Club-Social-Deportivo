@@ -20,7 +20,7 @@ class SocioPortalController extends Controller
     {
         $usuario = $request->user();
 
-        if ((int) $usuario->id_rol !== 2) {
+        if ((int) $usuario->id_rol !== 4) {
             return [
                 'error' => response()->json([
                     'message' => 'No autorizado. Esta sección es solo para socios.'
